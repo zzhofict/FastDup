@@ -1,6 +1,9 @@
 # ---> C++
 # Prerequisites
 *.d
+/.vscode
+/build
+build.sh
 
 # Compiled Object files
 *.slo
