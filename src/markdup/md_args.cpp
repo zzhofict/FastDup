@@ -23,4 +23,4 @@ using std::stol;
 using std::string;
 using std::vector;
 
-using namespace ns_md;
+using namespace nsmd;

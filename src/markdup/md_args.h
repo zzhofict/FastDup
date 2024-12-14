@@ -14,7 +14,7 @@ Date : 2023/10/23
 using std::string;
 using std::vector;
 
-namespace ns_md {
+namespace nsmd {
 /* How strict to be when reading a SAM or BAM, beyond bare minimum validation.
  */
 enum ValidationStringency {
@@ -54,10 +54,20 @@ enum ScoringStrategy { SUM_OF_BASE_QUALITIES, TOTAL_MAPPED_REFERENCE_LENGTH, RAN
 
 /* 索引文件的格式 （bai或者csi） */
 enum IndexFormat { BAI, CSI };
-}  // namespace ns_md
+}  // namespace nsmd
 
 /* markduplicate 需要的参数*/
 struct MarkDupsArg {
+    string INPUT_FILE;  // input bam filename
+
+    string OUTPUT_FILE;  // output bam filename
+
+    int NUM_THREADS = 1;
+
+    size_t MAX_MEM = ((size_t)1) << 31;  // 最小2G
+
+    bool DUPLEX_IO = true; // 同时读写
+
     /**
      * The optional attribute in SAM/BAM/CRAM files used to store the duplicate type.
      */
@@ -125,7 +135,7 @@ struct MarkDupsArg {
     bool REMOVE_SEQUENCING_DUPLICATES = false;
 
     /* "Determines how duplicate types are recorded in the DT optional attribute.") */
-    ns_md::DuplicateTaggingPolicy TAGGING_POLICY = ns_md::DuplicateTaggingPolicy::DontTag;
+    nsmd::DuplicateTaggingPolicy TAGGING_POLICY = nsmd::DuplicateTaggingPolicy::DontTag;
 
     /* "Clear DT tag from input SAM records. Should be set to false if input SAM doesn't have this tag.  Default true")
      */
@@ -159,11 +169,11 @@ struct MarkDupsArg {
 
     /* "If not null, assume that the input file has this order even if the header says otherwise.",
               optional = true, mutex = {"ASSUME_SORTED"} */
-    ns_md::SortOrder ASSUME_SORT_ORDER = ns_md::SortOrder::unsorted;
+    nsmd::SortOrder ASSUME_SORT_ORDER = nsmd::SortOrder::unsorted;
 
     /* "The scoring strategy for choosing the non-duplicate among candidates." */
-    ns_md::ScoringStrategy DUPLICATE_SCORING_STRATEGY = ns_md::ScoringStrategy::SUM_OF_BASE_QUALITIES;
-    // ns_md::ScoringStrategy DUPLICATE_SCORING_STRATEGY = ns_md::ScoringStrategy::TOTAL_MAPPED_REFERENCE_LENGTH;
+    nsmd::ScoringStrategy DUPLICATE_SCORING_STRATEGY = nsmd::ScoringStrategy::SUM_OF_BASE_QUALITIES;
+    // nsmd::ScoringStrategy DUPLICATE_SCORING_STRATEGY = nsmd::ScoringStrategy::TOTAL_MAPPED_REFERENCE_LENGTH;
 
     /* "The program record ID for the @PG record(s) created by this program. Set to null to disable " +
                     "PG record creation.  This string may have a suffix appended to avoid collision with other " +
@@ -203,6 +213,7 @@ struct MarkDupsArg {
        3rd, 4th and 5th elements are assumed to be tile, x and y values. " + "  For 7 element names (CASAVA 1.8), the
        5th, 6th, and 7th elements are assumed to be tile, x and y values.", optional = true */
     string READ_NAME_REGEX = "(?:.*:)?([0-9]+)[^:]*:([0-9]+)[^:]*:([0-9]+)[^:]*$";
+    bool CHECK_OPTICAL_DUP = true;
 
     /* "The maximum offset between two duplicate clusters in order to consider them optical duplicates. The default " +
                     "is appropriate for unpatterned versions of the Illumina platform. For the patterned flowcell
@@ -224,7 +235,7 @@ struct MarkDupsArg {
     /* "Validation stringency for all SAM files read by this program.  Setting stringency to SILENT " +
             "can improve performance when processing a BAM file in which variable-length data (read, qualities, tags) "
        + "do not otherwise need to be decoded.", common=true */
-    ns_md::ValidationStringency VALIDATION_STRINGENCY = ns_md::ValidationStringency::DEFAULT_STRINGENCY;
+    nsmd::ValidationStringency VALIDATION_STRINGENCY = nsmd::ValidationStringency::DEFAULT_STRINGENCY;
 
     /* "Compression level for all compressed files created (e.g. BAM and VCF).", common = true */
     int COMPRESSION_LEVEL = 5;
@@ -237,7 +248,7 @@ struct MarkDupsArg {
     /* "Whether to create an index when writing VCF or coordinate sorted BAM output.", common = true */
     bool CREATE_INDEX = false;
 
-    ns_md::IndexFormat INDEX_FORMAT = ns_md::IndexFormat::BAI;
+    nsmd::IndexFormat INDEX_FORMAT = nsmd::IndexFormat::BAI;
 
     /* "Whether to create an MD5 digest for any BAM or FASTQ files created.  ", common = true */
     bool CREATE_MD5_FILE = false;

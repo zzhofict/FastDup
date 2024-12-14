@@ -45,7 +45,7 @@ else()
 endif()
 
 # lib deflate
-find_library(DeflateLib dlibdeflate)
+find_library(DeflateLib deflate)
 if(DeflateLib)
     target_link_libraries(${PG_NAME} ${DeflateLib})
 else()
@@ -59,6 +59,13 @@ if (LibLZMA_FOUND)
     target_link_libraries(${PG_NAME} ${LIBLZMA_LIBRARY})
 else()
     message(FATAL_ERROR "lzma is not found")
+endif()
+
+# lib curl
+find_package(CURL REQUIRED)
+if (CURL_FOUND)
+    include_directories(${CURL_INCLUDE_DIR})
+    target_link_libraries(${PG_NAME} ${CURL_LIBRARY})
 endif()
 
 # lz

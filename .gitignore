@@ -4,6 +4,7 @@
 /.vscode
 /build
 build.sh
+run.sh
 
 # Compiled Object files
 *.slo
