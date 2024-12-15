@@ -364,6 +364,7 @@ static void mtGenerateReadEnds(void *data, long idx, int tid) {
     frags.clear();
     unpairedDic.clear();
 
+    PROF_START(gen);
     size_t start_id = LOWER_BOUND(idx, nThread, bams.size());
     size_t end_id = UPPER_BOUND(idx, nThread, bams.size());
     for (size_t i = start_id; i < end_id; ++i) {  // 循环处理每个read
@@ -390,9 +391,16 @@ static void mtGenerateReadEnds(void *data, long idx, int tid) {
             }
         }
     }
+    PROF_END(tprof[TP_gen][tid], gen);
+
+    PROF_START(sort_frag);
     // sortReadEndsArr(frags);
     sort(frags.begin(), frags.end());
+    PROF_END(tprof[TP_sort_frag][tid], sort_frag);
+
+    PROF_START(sort_pair);
     sort(pairs.begin(), pairs.end());
+    PROF_END(tprof[TP_sort_pair][tid], sort_pair);
 }
 
 static void doGenRE(PipelineArg &pipeArg) {
@@ -451,14 +459,18 @@ static void doSort(PipelineArg &pipeArg) {
     smd.frags.clear();
     const ReadEnds *pRE;
     ReadEndsHeap pairsHeap, fragsHeap;
+    PROF_START(sort_pair);
     pairsHeap.Init(&genREData.pairsArr);
     while ((pRE = pairsHeap.Pop()) != nullptr) {
         smd.pairs.push_back(*pRE);
     }
+    PROF_END(gprof[GP_sort_pair], sort_pair);
+    PROF_START(sort_frag);
     fragsHeap.Init(&genREData.fragsArr);
     while ((pRE = fragsHeap.Pop()) != nullptr) {
         smd.frags.push_back(*pRE);
     }
+    PROF_END(gprof[GP_sort_frag], sort_frag);
 }
 // for step-4 sort
 static void doMarkDup(PipelineArg &pipeArg) {
@@ -477,9 +489,13 @@ static void doMarkDup(PipelineArg &pipeArg) {
 
     SortMarkData &smd = *(SortMarkData *)mdData.dataPtr;
     //  先处理 pair
+    PROF_START(markdup_pair);
     processPairs(smd.pairs, &mdData.pairDupIdx, &mdData.pairOpticalDupIdx, &mdData.pairRepIdx);
+    PROF_END(gprof[GP_markdup_pair], markdup_pair);
     // 再处理frag
+    PROF_START(markdup_frag);
     processFrags(smd.frags, &mdData.fragDupIdx);
+    PROF_END(gprof[GP_markdup_frag], markdup_frag);
 }
 
 template <typename T>
@@ -947,6 +963,7 @@ static void mergeAllTask(PipelineArg &pipeArg) {
     IntersectData &g = pipeArg.intersectData;
     SortMarkData &lpSM = *(SortMarkData *)lp.dataPtr;
     // 遗留的未匹配的pair
+    PROF_START(merge_match);
     for (auto &prevUnpair : lpSM.unpairedDic) {  // 遍历上一个任务中的每个未匹配的read
         auto &readName = prevUnpair.first;
         auto &prevPosInfo = prevUnpair.second;
@@ -965,7 +982,9 @@ static void mergeAllTask(PipelineArg &pipeArg) {
             g.unpairedDic.insert(prevUnpair);  // 用来记录没有匹配的read个数
         }
     }
+    PROF_END(gprof[GP_merge_match], merge_match);
 
+    PROF_START(merge_markdup);
     map<int64_t, TaskSeqDupInfo> taskChanged;
     for (auto &e : g.unpairedPosArr) {
         auto posKey = e.first;
@@ -990,8 +1009,10 @@ static void mergeAllTask(PipelineArg &pipeArg) {
                           g.latterNotRepIdxArr[taskSeq]);
     }
     g.unpairedPosArr.clear();
+    PROF_END(gprof[GP_merge_markdup], merge_markdup);
 
     // 将dupidx放进全局数据
+    PROF_START(merge_update);
     vector<DupInfo> cacheDupIdx;
     vector<DupInfo> midArr;
     vector<int64_t> intCacheDupIdx;
@@ -1004,7 +1025,9 @@ static void mergeAllTask(PipelineArg &pipeArg) {
                                intCacheDupIdx, intMidArr);
     for (int i = 0; i < (int)g.repIdxArr.size() - 1; ++i)
         refeshFinalTaskDupInfo(g.latterRepIdxArr[i], g.latterNotRepIdxArr[i], g.repIdxArr[i], cacheDupIdx, midArr);
+    PROF_END(gprof[GP_merge_update], merge_update);
 
+    PROF_START(merge_add);
     g.dupIdxArr.push_back(vector<DupInfo>());
     auto &vIdx = g.dupIdxArr.back();
     lp.pairDupIdx.insert(lp.fragDupIdx.begin(), lp.fragDupIdx.end());
@@ -1020,6 +1043,7 @@ static void mergeAllTask(PipelineArg &pipeArg) {
     auto &vRepIdx = g.repIdxArr.back();
     vRepIdx.insert(vRepIdx.end(), lp.pairRepIdx.begin(), lp.pairRepIdx.end());
     std::sort(vRepIdx.begin(), vRepIdx.end());
+    PROF_END(gprof[GP_merge_add], merge_add);
 }
 
 static void parallelPipeline() {
@@ -1083,8 +1107,8 @@ static void parallelPipeline() {
 //    cout << "copy time: " << tm_arr[5].acc_seconds_elapsed() << endl;
 //    cout << "merge al6 time: " << tm_arr[6].acc_seconds_elapsed() << endl;
 //
-//    cout << "dup num         : " << dupNum << "\t" << dup.size() << endl;
-//    cout << "optical dup num : " << opticalDupNum / 2 << "\t" << opticalDupNum << endl;
+    cout << "dup num         : " << dupNum << "\t" << dup.size() << endl;
+    cout << "optical dup num : " << opticalDupNum / 2 << "\t" << opticalDupNum << endl;
 
 }
 

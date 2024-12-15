@@ -43,11 +43,19 @@ enum {
     GP_sort,
     GP_markdup,
     GP_intersect,
-    GP_merge_result
+    GP_merge_result,
+    GP_markdup_pair,
+    GP_markdup_frag,
+    GP_sort_pair,
+    GP_sort_frag,
+    GP_merge_match,
+    GP_merge_markdup,
+    GP_merge_update,
+    GP_merge_add
 };
 // THREAD
 enum { TP_0 = 0, TP_1, TP_2, TP_3, TP_4, TP_5, TP_6, TP_7, TP_8, TP_9, TP_10 };
-enum { TP_gen = 11, TP_sort };
+enum { TP_gen = 11, TP_sort, TP_sort_frag, TP_sort_pair};
 
 uint64_t RealtimeMsec(void);
 

@@ -14,12 +14,12 @@ Date : 2023/10/23
 #include <vector>
 
 #include "dup_metrics.h"
+#include "fastdup_version.h"
 #include "md_args.h"
 #include "md_funcs.h"
 #include "pipeline_md.h"
 #include "read_name_parser.h"
 #include "util/profiling.h"
-#include "version.h"
 
 #define BAM_BLOCK_SIZE 16L * 1024 * 1024
 
@@ -81,13 +81,32 @@ int MarkDuplicates() {
     hts_set_opt(nsgv::gInBamFp, HTS_OPT_THREAD_POOL, &htsPoolRead);
 
     // 测试读写速度
-#if 1
+#if 0
     bam1_t *bamp = bam_init1();
     while (sam_read1(nsgv::gInBamFp, nsgv::gInBamHeader, bamp) >= 0);
     DisplayProfiling(nsgv::gMdArg.NUM_THREADS);
     exit(0);
 #endif
 
+    /* 冗余检查和标记 */
+    pipelineMarkDups();
+
+    /* 初始化输出文件 */
+    char modeout[12] = "wb";
+    sam_open_mode(modeout + 1, nsgv::gMdArg.OUTPUT_FILE.c_str(), NULL);
+    nsgv::gOutBamFp = sam_open(nsgv::gMdArg.OUTPUT_FILE.c_str(), modeout);
+    nsgv::gOutBamHeader = sam_hdr_dup(nsgv::gInBamHeader);
+    // 修改输出文件的header
+    // sam_hdr_add_line(nsgv::gOutBamHeader, "PG", "ID", nsgv::gMdArg.PROGRAM_RECORD_ID.c_str(), "VN", FASTDUP_VERSION,
+    //                  "CL",
+    //                  (nsgv::gMdArg.PROGRAM_RECORD_ID + " " + nsgv::gMdArg.GetArgValueString() + " " +
+    //                   nsgv::gMdArg.GetArgValueString())
+    //                      .c_str(),
+    //                  NULL);
+
+    // 用同样的线程池处理输出文件
+    hts_set_opt(nsgv::gOutBamFp, HTS_OPT_BLOCK_SIZE, BAM_BLOCK_SIZE);
+    hts_set_opt(nsgv::gOutBamFp, HTS_OPT_THREAD_POOL, &htsPoolWrite);
 
 
     return 0;

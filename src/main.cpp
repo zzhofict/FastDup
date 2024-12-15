@@ -10,7 +10,7 @@
 
 #include "markdup/md_args.h"
 #include "util/profiling.h"
-#include "version.h"
+#include "fastdup_version.h"
 
 namespace nsgv {
 extern MarkDupsArg gMdArg;

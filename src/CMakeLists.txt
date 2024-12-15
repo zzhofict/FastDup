@@ -9,9 +9,9 @@ aux_source_directory(${PROJECT_SOURCE_DIR}/src/markdup MARKDUP_SRC)
 set(KTHREAD_FILE ${PROJECT_SOURCE_DIR}/ext/klib/kthread.c)
 
 # including path
-include_directories("${PROJECT_SOURCE_DIR}/src")
 include_directories("${PROJECT_SOURCE_DIR}/ext")
 include_directories("${PROJECT_SOURCE_DIR}/ext/htslib")
+include_directories("${PROJECT_SOURCE_DIR}/src")
 
 # linking path
 link_directories("${PROJECT_SOURCE_DIR}/ext/htslib")
