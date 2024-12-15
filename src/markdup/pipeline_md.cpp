@@ -2,6 +2,7 @@
 
 #include <klib/kthread.h>
 #include <pthread.h>
+#include <spdlog/spdlog.h>
 
 #include <algorithm>
 #include <iostream>
@@ -16,7 +17,6 @@
 #include "util/profiling.h"
 #include "util/yarn.h"
 
-using std::cout;
 using std::vector;
 
 namespace nsgv {
@@ -247,7 +247,6 @@ static void markdups(MarkDupDataArg *arg) {
 static inline void getIntersectData(vector<ReadEnds> &leftArr, vector<ReadEnds> &rightArr, vector<ReadEnds> *dst,
                                     bool isPairCmp = false) {
     if (leftArr.empty() || rightArr.empty()) {
-        // cout << "bad size: " << leftArr.size() << '\t' << rightArr.size() << endl;
         return;
     }
     const size_t leftEndIdx = leftArr.size() - 1;
@@ -782,7 +781,7 @@ static void *pipeRead(void *data) {
             yarn::TWIST(pipeArg.readSig, yarn::BY, 1);  // 读入了一轮数据
             break;
         }
-        cout << "read num: " << readNum << "\t" << readNumSum << '\t' << pipeArg.readOrder << endl;
+        spdlog::info("{} reads processed in {} round", readNum, pipeArg.readOrder);
 
         pipeArg.readData.bams = inBamBuf.GetBamArr();
 
@@ -794,7 +793,7 @@ static void *pipeRead(void *data) {
         pipeArg.readOrder += 1;         // for next
         yarn::TWIST(pipeArg.readSig, yarn::BY, 1);  // 读入了一轮数据
     }
-    cout << "total reads: " << readNumSum << endl;
+    spdlog::info("total reads processed {}", readNumSum);
     return 0;
 }
 static void *pipeGenRE(void *data) {
@@ -825,7 +824,6 @@ static void *pipeGenRE(void *data) {
             break;
         }
         /* 处理bam，生成readends */
-        //        cout << "genRE order: " << pipeArg.genREOrder << "\t" << pipeArg.readData.bamStartIdx << endl;
         PROF_START(gen);
         doGenRE(pipeArg);
         // usleep(200000);
@@ -836,7 +834,6 @@ static void *pipeGenRE(void *data) {
         yarn::TWIST(pipeArg.genRESig, yarn::BY, 1);
         yarn::TWIST(pipeArg.readSig, yarn::BY, -1);  // 使用了一次读入的数据
     }
-    cout << "pipe gen reads" << endl;
     return 0;
 }
 static void *pipeSort(void *data) {
@@ -867,7 +864,6 @@ static void *pipeSort(void *data) {
             break;
         }
         /* 排序 readends */
-        //        cout << "sort order: " << pipeArg.sortOrder << endl;
         PROF_START(sort);
         doSort(pipeArg);
         PROF_END(gprof[GP_sort], sort);
@@ -879,7 +875,6 @@ static void *pipeSort(void *data) {
         pipeArg.sortOrder += 1;
         yarn::TWIST(pipeArg.sortSig, yarn::BY, 1);
     }
-    cout << "end pipe sort" << endl;
     return 0;
 }
 static void *pipeMarkDup(void *data) {
@@ -910,7 +905,6 @@ static void *pipeMarkDup(void *data) {
             break;
         }
         /* 冗余检测 readends */
-        // cout << "markdup order: " << pipeArg.markDupOrder << endl;
         PROF_START(markdup);
         doMarkDup(pipeArg);
         PROF_END(gprof[GP_markdup], markdup);
@@ -921,7 +915,6 @@ static void *pipeMarkDup(void *data) {
         pipeArg.markDupOrder += 1;
         yarn::TWIST(pipeArg.markDupSig, yarn::BY, 1);
     }
-    cout << "end pipe markdup" << endl;
     return 0;
 }
 static void *pipeIntersect(void *data) {
@@ -953,7 +946,6 @@ static void *pipeIntersect(void *data) {
 
         pipeArg.intersectOrder += 1;
     }
-    cout << "end pipe intersect" << endl;
     return 0;
 }
 
@@ -1060,56 +1052,6 @@ static void parallelPipeline() {
     PROF_START(merge_result);
     mergeAllTask(pipeArg);
     PROF_END(gprof[GP_merge_result], merge_result);
-
-    int64_t dupNum = 0;
-    int64_t opticalDupNum = 0;
-    for (auto &arr : pipeArg.intersectData.dupIdxArr) dupNum += arr.size();
-    for (auto &arr : pipeArg.intersectData.opticalDupIdxArr) opticalDupNum += arr.size();
-
-    map<int64_t, int> dup;
-#if 0
-    int taskSeq = 0;
-    for (auto &arr : pipeArg.intersectData.dupIdxArr) {
-        for (auto idx : arr) {
-            if (dup.find(idx.idx) != dup.end()) {
-                //if (taskSeq - 1 > dup[idx])
-                cout << "dup index: " << dup[idx] << '\t' << taskSeq << '\t' << idx << endl;
-            }
-            dup[idx.idx] = taskSeq;
-        }
-        // cout << taskSeq << "\t" << arr.size() << endl;
-        taskSeq++;
-    }
-#endif
-
-    cout << "Final read  order: " << pipeArg.readOrder << endl;
-    cout << "Final gen   order: " << pipeArg.genREOrder << endl;
-    cout << "Final sort  order: " << pipeArg.sortOrder << endl;
-    cout << "Final mark  order: " << pipeArg.markDupOrder << endl;
-    cout << "Final inter order: " << pipeArg.intersectOrder << endl;
-
-//    cout << "w read time     : " << tm_arr[10].acc_seconds_elapsed() << endl;
-//    cout << "w gen time      : " << tm_arr[11].acc_seconds_elapsed() << endl;
-//    cout << "w sort time     : " << tm_arr[12].acc_seconds_elapsed() << endl;
-//    cout << "w markdup time  : " << tm_arr[13].acc_seconds_elapsed() << endl;
-//    cout << "w intersect time: " << tm_arr[14].acc_seconds_elapsed() << endl;
-//
-//    cout << "w1 gen time      : " << tm_arr[21].acc_seconds_elapsed() << endl;
-//    cout << "w1 sort time     : " << tm_arr[22].acc_seconds_elapsed() << endl;
-//    cout << "w1 markdup time  : " << tm_arr[23].acc_seconds_elapsed() << endl;
-//
-//    cout << "read time     : " << tm_arr[0].acc_seconds_elapsed() << endl;
-//    cout << "gen time      : " << tm_arr[1].acc_seconds_elapsed() << endl;
-//    cout << "sort time     : " << tm_arr[2].acc_seconds_elapsed() << endl;
-//    cout << "markdup time  : " << tm_arr[3].acc_seconds_elapsed() << endl;
-//    cout << "intersect time: " << tm_arr[4].acc_seconds_elapsed() << endl;
-//
-//    cout << "copy time: " << tm_arr[5].acc_seconds_elapsed() << endl;
-//    cout << "merge al6 time: " << tm_arr[6].acc_seconds_elapsed() << endl;
-//
-    cout << "dup num         : " << dupNum << "\t" << dup.size() << endl;
-    cout << "optical dup num : " << opticalDupNum / 2 << "\t" << opticalDupNum << endl;
-
 }
 
 /* 并行流水线方式处理数据，标记冗余 */
@@ -1133,7 +1075,7 @@ void pipelineMarkDups() {
         if (readNum < 1) {
             break;
         }
-        cout << "read num: " << readNum << "\t" << readNumSum << '\t' << pipeArg.readOrder << endl;
+        spdlog::info("{} reads processed in {} round", readNum, pipeArg.readOrder);
 
         pipeArg.readData.bams = inBamBuf.GetBamArr();
         pipeArg.readData.bamStartIdx = readNumSum;
@@ -1158,32 +1100,4 @@ void pipelineMarkDups() {
         pipeArg.readOrder += 1;  // for next
     }
     mergeAllTask(pipeArg);
-
-    int64_t dupNum = 0;
-    int64_t opticalDupNum = 0;
-    for (auto &arr : pipeArg.intersectData.dupIdxArr) dupNum += arr.size();
-    for (auto &arr : pipeArg.intersectData.opticalDupIdxArr) opticalDupNum += arr.size();
-
-    map<int64_t, int> dup;
-#if 0
-    int taskSeq = 0;
-    for (auto &arr : pipeArg.intersectData.dupIdxArr) {
-        for (auto idx : arr) {
-            if (dup.find(idx.idx) != dup.end()) {
-                cout << "dup index: " << dup[idx] << '\t' << taskSeq << '\t' << idx << endl;
-            }
-            dup[idx.idx] = taskSeq;
-        }
-        taskSeq++;
-    }
-#endif
-
-    cout << "total reads: " << readNumSum << endl;
-    cout << "Final read  order: " << pipeArg.readOrder << endl;
-    cout << "Final gen   order: " << pipeArg.genREOrder << endl;
-    cout << "Final sort  order: " << pipeArg.sortOrder << endl;
-    cout << "Final mark  order: " << pipeArg.markDupOrder << endl;
-    cout << "Final inter order: " << pipeArg.intersectOrder << endl;
-    cout << "dup num         : " << dupNum << "\t" << dup.size() << endl;
-    cout << "optical dup num : " << opticalDupNum / 2 << "\t" << opticalDupNum << endl;
 }

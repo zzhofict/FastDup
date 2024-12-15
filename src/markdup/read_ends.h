@@ -32,6 +32,7 @@ struct PhysicalLocation {
     int16_t tile = -1;
     // int32_t x = -1;
     // int32_t y = -1;
+    // This is a bug in picard Markduplicates, because some tile coordinates exceede the range of int16_t
     int16_t x = -1;
     int16_t y = -1;
 };

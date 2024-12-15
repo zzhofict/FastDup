@@ -25,9 +25,15 @@ extern uint64_t gprof[LIM_GLOBAL_PROF_TYPE];
 #define PROF_START(tmp_time) uint64_t prof_tmp_##tmp_time = RealtimeMsec()
 #define PROF_START_AGAIN(tmp_time) prof_tmp_##tmp_time = RealtimeMsec()
 #define PROF_END(result, tmp_time) result += RealtimeMsec() - prof_tmp_##tmp_time
+#define PROF_PRINT_START(tmp_time) uint64_t tmp_time = RealtimeMsec()
+#define PROF_PRINT_END(tmp_time)          \
+    tmp_time = RealtimeMsec() - tmp_time; \
+    fprintf(stderr, "time %-15s:     %0.2lfs\n", #tmp_time, tmp_time * 1.0 / proc_freq)
 #else
 #define PROF_START(tmp_time)
 #define PROF_END(result, tmp_time)
+#define PROF_PRINT_START(tmp_time)
+#define PROF_PRINT_END(tmp_time)
 #endif
 
 // GLOBAL
@@ -51,7 +57,10 @@ enum {
     GP_merge_match,
     GP_merge_markdup,
     GP_merge_update,
-    GP_merge_add
+    GP_merge_add,
+    GP_markdup_all,
+    GP_final_read,
+    GP_write
 };
 // THREAD
 enum { TP_0 = 0, TP_1, TP_2, TP_3, TP_4, TP_5, TP_6, TP_7, TP_8, TP_9, TP_10 };

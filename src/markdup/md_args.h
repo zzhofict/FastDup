@@ -256,14 +256,9 @@ struct MarkDupsArg {
     /* Add PG tag to each read in a SAM or BAM (PGTagArgumentCollection)*/
     bool ADD_PG_TAG_TO_READS = true;
 
-    // 解析参数
-    void ParseArgument(int argc, char **argv);
+    // 命令行字符串
+    string CLI_STR;
 
-    void PrintArgValue();
-    string GetArgValueString();
-
-    static void PrintHelp();
-
-    static void PrintVersion();
-
+    // 开始运行时间
+    string START_TIME;
 };

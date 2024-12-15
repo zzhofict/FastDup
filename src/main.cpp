@@ -1,6 +1,7 @@
 #include <spdlog/cfg/env.h>
 #include <spdlog/sinks/stdout_color_sinks.h>
 #include <spdlog/spdlog.h>
+#include <time.h>
 
 #include <argparse/argparse.hpp>
 #include <iostream>
@@ -8,15 +9,25 @@
 #include <set>
 #include <string>
 
+#include "fastdup_version.h"
 #include "markdup/md_args.h"
 #include "util/profiling.h"
-#include "fastdup_version.h"
 
 namespace nsgv {
 extern MarkDupsArg gMdArg;
 };
 
 int MarkDuplicates();
+
+string get_current_time_str() {
+    time_t time_val;
+    struct tm *at;
+    char now[80];
+    time(&time_val);
+    at = localtime(&time_val);
+    strftime(now, 79, "%B %d, %Y at %I:%M:%S %p %Z", at);
+    return string(now);
+}
 
 int main(int argc, char *argv[]) {
     // init log
@@ -158,6 +169,12 @@ int main(int argc, char *argv[]) {
         .nargs(0);
 
     // std::cout << program << std::endl;
+
+    nsgv::gMdArg.START_TIME = get_current_time_str();
+    nsgv::gMdArg.CLI_STR = argv[0];
+    for (int i = 1; i < argc; ++i) {
+        nsgv::gMdArg.CLI_STR += " " + std::string(argv[i]);
+    }
 
     try {
         program.parse_args(argc, argv);

@@ -68,6 +68,9 @@ int DisplayProfiling(int nthread) {
     PRINT_GP(merge_markdup);
     PRINT_GP(merge_update);
     PRINT_GP(merge_add);
+    PRINT_GP(markdup_all);
+    PRINT_GP(final_read);
+    PRINT_GP(write);
 
     PRINT_TP(gen, nthread);
     PRINT_TP(sort_frag, nthread);
