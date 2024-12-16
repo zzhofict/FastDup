@@ -32,10 +32,11 @@ Use spdlog as log tool and the default level is 'info'.
 
 ### Build tools
 
+* autoconf (for htslib)
 * cmake
 * c++17 (gcc >= 8.1 or clang >= 7 should work.)
 
-### Libraries need
+### Libraries needed
 
 * zlib
 * libbz2
@@ -47,7 +48,7 @@ Use spdlog as log tool and the default level is 'info'.
 
 Download a distribution tarball `FastDup.tar.gz` or clone the source codes from github.
 
-```
+```bash
 # build htslib
 cd FastDup/ext/htslib
 autoreconf -i
@@ -59,4 +60,18 @@ cd FastDup
 mkdir build && cd build
 cmake .. -DCMAKE_BUILD_TYPE=Release
 make && sudo make install
+```
+
+## Usage
+
+1. get help
+
+```bash
+fastdup --help
+```
+
+2. mark duplicates on an input BAM file
+
+```bash
+fastdup --input in.bam --output out.bam --metrics stats.txt --num-threads 8
 ```
