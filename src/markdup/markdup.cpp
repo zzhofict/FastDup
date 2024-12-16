@@ -303,7 +303,7 @@ int MarkDuplicates() {
                 bam_aux_append(bw->b, "PG", 'Z', nsgv::gMdArg.PROGRAM_RECORD_ID.size() + 1,
                                (const uint8_t *)nsgv::gMdArg.PROGRAM_RECORD_ID.c_str());
             }
-#if 0
+#if 1
             if (sam_write1(nsgv::gOutBamFp, nsgv::gOutBamHeader, bw->b) < 0) {
                 spdlog::error("failed writing sam record to \"{}\"", nsgv::gMdArg.OUTPUT_FILE.c_str());
                 sam_close(nsgv::gOutBamFp);
