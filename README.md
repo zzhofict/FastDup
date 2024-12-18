@@ -59,8 +59,10 @@ make
 cd FastDup
 mkdir build && cd build
 cmake .. -DCMAKE_BUILD_TYPE=Release
-make && sudo make install
+make
 ```
+
+The generated binary fastdup will be in the build/bin folder.
 
 ## Usage
 
@@ -70,7 +72,7 @@ make && sudo make install
 fastdup --help
 ```
 
-2. mark duplicates on an input BAM file
+2. mark duplicates on an input BAM file using 8 threads
 
 ```bash
 fastdup --input in.bam --output out.bam --metrics stats.txt --num-threads 8
