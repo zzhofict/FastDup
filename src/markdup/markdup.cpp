@@ -26,7 +26,7 @@ Date : 2023/10/23
 
 namespace nsgv {
 
-MarkDupsArg gMdArg;                   // 用来测试性能
+MarkDupsArg gMdArg;                   // 参数
 std::vector<ReadNameParser> gNameParsers;  // 每个线程一个read name parser
 samFile *gInBamFp;                    // 输入的bam文件
 sam_hdr_t *gInBamHeader;              // 输入的bam文件头信息
@@ -177,7 +177,8 @@ int MarkDuplicates() {
 
     int64_t realDupSize = 0;
 
-    // exit(0);
+    return 0;
+
     PROF_START(write);
     while (inBuf.ReadStat() >= 0) {
         PROF_START(final_read);
