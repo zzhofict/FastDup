@@ -18,7 +18,8 @@ Date : 2023/10/23
 #include "fastdup_version.h"
 #include "md_args.h"
 #include "md_funcs.h"
-#include "pipeline_md.h"
+// #include "pipeline_md.h"
+#include "new_pipe.h"
 #include "read_name_parser.h"
 #include "util/profiling.h"
 
@@ -33,9 +34,9 @@ sam_hdr_t *gInBamHeader;              // 输入的bam文件头信息
 samFile *gOutBamFp;                   // 输出文件, sam或者bam格式
 sam_hdr_t *gOutBamHeader;             // 输出文件的header
 DuplicationMetrics gMetrics;          // 统计信息
-PipelineArg gPipe;
-
-};
+DupResult gDupRes;
+PipelineArg gPipe(&gDupRes);
+};  // namespace nsgv
 
 // 字节缓冲区
 struct ByteBuf {
@@ -98,7 +99,8 @@ int MarkDuplicates() {
 
     /* 冗余检查和标记 */
     PROF_START(markdup_all);
-    pipelineMarkDups();
+    //pipelineMarkDups();
+    NewPipeMarkDups();
     PROF_END(gprof[GP_markdup_all], markdup_all);
 
     /* 标记冗余, 将处理后的结果写入文件 */
@@ -157,10 +159,15 @@ int MarkDuplicates() {
 
     DupIdxQueue<DupInfo> dupIdxQue, repIdxQue;
     DupIdxQueue<int64_t> opticalIdxQue;
-    dupIdxQue.Init(&nsgv::gPipe.intersectData.dupIdxArr);
-    repIdxQue.Init(&nsgv::gPipe.intersectData.repIdxArr);
-    opticalIdxQue.Init(&nsgv::gPipe.intersectData.opticalDupIdxArr);
+    dupIdxQue.Init(&nsgv::gDupRes.dupIdxArr);
+    repIdxQue.Init(&nsgv::gDupRes.repIdxArr);
+    opticalIdxQue.Init(&nsgv::gDupRes.opticalDupIdxArr);
     spdlog::info("{} duplicate reads found", dupIdxQue.Size());
+    spdlog::info("{} optical reads found", opticalIdxQue.Size());
+    spdlog::info("{} represent reads found", repIdxQue.Size());
+    spdlog::info("real dup size: {}", dupIdxQue.RealSize());
+
+    return 0;
 
     uint64_t bamIdx = 0;
     DupInfo dupIdx = dupIdxQue.Pop();
@@ -177,7 +184,12 @@ int MarkDuplicates() {
 
     int64_t realDupSize = 0;
 
-    return 0;
+    ofstream ofs("newdup.txt");
+
+    // return 0;
+    // for debug
+    int64_t maxDiff = 0;
+    int64_t minDiff = 0;
 
     PROF_START(write);
     while (inBuf.ReadStat() >= 0) {
@@ -214,14 +226,24 @@ int MarkDuplicates() {
             }
 
             /* 判断是否冗余 */
+            // cout << dupIdx << endl;
             if (bamIdx == dupIdx) {
+                // ofs << bamIdx << endl;
                 ++realDupSize;  // for test
                 isDup = true;
                 if (nsgv::gMdArg.TAG_DUPLICATE_SET_MEMBERS && dupIdx.dupSet != 0) {
                     isInDuplicateSet = true;
-                    representativeReadIndexInFile = dupIdx.repIdx;
+                    representativeReadIndexInFile = dupIdx.GetRepIdx();
                     duplicateSetSize = dupIdx.dupSet;
                 }
+
+#if 1
+                // spdlog::info("diff: {}", dupIdx.idx - dupIdx.repIdx);
+                //maxDiff = std::max(maxDiff, dupIdx.idx - dupIdx.repIdx);
+                //minDiff = std::min(minDiff, dupIdx.idx - dupIdx.repIdx);
+                //spdlog::info("min: {}, max: {}", minDiff, maxDiff);
+                
+#endif
 
                 // 为了防止小内存运行的时候，有重复的dupidx，这时候dup的repIdx和dupSetSize可能会有不同
                 while ((dupIdx = dupIdxQue.Pop()) == bamIdx);
@@ -262,7 +284,7 @@ int MarkDuplicates() {
             }
             if (nsgv::gMdArg.TAG_DUPLICATE_SET_MEMBERS && bamIdx == repIdx) {  // repressent
                 isInDuplicateSet = true;
-                representativeReadIndexInFile = repIdx.repIdx;
+                representativeReadIndexInFile = repIdx.GetRepIdx();
                 duplicateSetSize = repIdx.dupSet;
                 while (repIdx == bamIdx || repIdx.dupSet == 0) {
                     if (repIdxQue.Size() > 0)
@@ -277,6 +299,7 @@ int MarkDuplicates() {
             if (nsgv::gMdArg.TAG_DUPLICATE_SET_MEMBERS && isInDuplicateSet) {
                 if (!bw->IsSecondaryOrSupplementary() && !bw->GetReadUnmappedFlag()) {
                     // cerr << bamIdx << " " << representativeReadIndexInFile << " " << duplicateSetSize << endl;
+                    // ofs << bamIdx << " " << representativeReadIndexInFile << " " << duplicateSetSize << endl;
                     uint8_t *oldTagVal = bam_aux_get(bw->b, nsgv::gMdArg.DUPLICATE_SET_INDEX_TAG.c_str());
                     if (oldTagVal != NULL)
                         bam_aux_del(bw->b, oldTagVal);
@@ -304,7 +327,7 @@ int MarkDuplicates() {
                 bam_aux_append(bw->b, "PG", 'Z', nsgv::gMdArg.PROGRAM_RECORD_ID.size() + 1,
                                (const uint8_t *)nsgv::gMdArg.PROGRAM_RECORD_ID.c_str());
             }
-#if 1
+#if 0
             if (sam_write1(nsgv::gOutBamFp, nsgv::gOutBamHeader, bw->b) < 0) {
                 spdlog::error("failed writing sam record to \"{}\"", nsgv::gMdArg.OUTPUT_FILE.c_str());
                 sam_close(nsgv::gOutBamFp);
@@ -322,8 +345,7 @@ int MarkDuplicates() {
     // 计算统计信息
     nsgv::gMetrics.READ_PAIRS_EXAMINED /= 2;
     nsgv::gMetrics.READ_PAIR_DUPLICATES /= 2;
-    for (auto &arr : nsgv::gPipe.intersectData.opticalDupIdxArr)
-        nsgv::gMetrics.READ_PAIR_OPTICAL_DUPLICATES += arr.size();
+    for (auto &arr : nsgv::gDupRes.opticalDupIdxArr) nsgv::gMetrics.READ_PAIR_OPTICAL_DUPLICATES += arr.size();
     nsgv::gMetrics.READ_PAIR_OPTICAL_DUPLICATES = nsgv::gMetrics.READ_PAIR_OPTICAL_DUPLICATES / 2;
     nsgv::gMetrics.ESTIMATED_LIBRARY_SIZE =
         estimateLibrarySize(nsgv::gMetrics.READ_PAIRS_EXAMINED - nsgv::gMetrics.READ_PAIR_OPTICAL_DUPLICATES,
@@ -375,6 +397,8 @@ int MarkDuplicates() {
     /* 关闭文件，收尾清理 */
     sam_close(nsgv::gOutBamFp);
     sam_close(nsgv::gInBamFp);
+
+    ofs.close();
 
     return 0;
 }

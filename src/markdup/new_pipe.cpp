@@ -1,4 +1,4 @@
-#include "pipeline_md.h"
+#include "new_pipe.h"
 
 #include <klib/kthread.h>
 #include <pthread.h>
@@ -21,10 +21,10 @@ using std::vector;
 
 namespace nsgv {
 
-extern MarkDupsArg gMdArg;                   // 用来测试性能
-extern samFile *gInBamFp;                    // 输入的bam文件
-extern sam_hdr_t *gInBamHeader;              // 输入的bam文件头信息
-extern DuplicationMetrics gMetrics;          // 统计信息
+extern MarkDupsArg gMdArg;           // 用来测试性能
+extern samFile *gInBamFp;            // 输入的bam文件
+extern sam_hdr_t *gInBamHeader;      // 输入的bam文件头信息
+extern DuplicationMetrics gMetrics;  // 统计信息
 extern vector<ReadNameParser> gNameParsers;
 extern DupResult gDupRes;
 extern PipelineArg gPipe;
@@ -65,13 +65,9 @@ static inline void sortReadEndsArr(vector<ReadEnds> &arr) {
 }
 
 /* 处理一组pairend的readends，标记冗余, 这个函数需要串行运行，因为需要做一些统计*/
-static void markDupsForPairs(vector<const ReadEnds *> &vpRe,
-                             DPSet<DupInfo> *dupIdx,
-                             MDSet<int64_t> *opticalDupIdx,
-                             DPSet<DupInfo> *repIdx,
-                             MDSet<int64_t> *notDupIdx = nullptr,
-                             MDSet<int64_t> *notOpticalDupIdx = nullptr,
-                             MDSet<int64_t> *notRepIdx = nullptr) {
+static void markDupsForPairs(vector<const ReadEnds *> &vpRe, DPSet<DupInfo> *dupIdx, MDSet<int64_t> *opticalDupIdx,
+                             DPSet<DupInfo> *repIdx, MDSet<int64_t> *notDupIdx = nullptr,
+                             MDSet<int64_t> *notOpticalDupIdx = nullptr, MDSet<int64_t> *notRepIdx = nullptr) {
     if (vpRe.size() < 2) {
         return;
     }
@@ -114,6 +110,12 @@ static void markDupsForPairs(vector<const ReadEnds *> &vpRe,
     }
     for (auto pe : vpRe) {  // 对非best read标记冗余
         if (pe != pBest) {  // 非best
+            if (pe->read1IndexInFile == 1165334 || pe->read1IndexInFile == 1165335) {
+                for (auto p : vpRe) {
+                    cout << "zzh find in pairs " << p->read1IndexInFile << " " << p->score << endl;
+                }
+                // cout << "zzh find in pairs " << pe->read1IndexInFile << " " << (notOpticalDupIdx == nullptr) << endl;
+            }
             dupIdx->insert(DupInfo(pe->read1IndexInFile, pBest->read1IndexInFile, (int16_t)vpRe.size()));  // 添加read1
             if (pe->read2IndexInFile != pe->read1IndexInFile)
                 dupIdx->insert(DupInfo(pe->read2IndexInFile, pBest->read1IndexInFile, (int16_t)vpRe.size()));  // read2,
@@ -148,6 +150,9 @@ static void markDupsForFrags(vector<const ReadEnds *> &vpRe, bool containsPairs,
     if (containsPairs) {
         for (auto pe : vpRe) {
             if (!pe->IsPaired()) {
+                //if (pe->read1IndexInFile == 143876) {
+                //    cout << "zzh find in frags" << endl;
+                //}
                 dupIdx->insert(pe->read1IndexInFile);
             }
         }
@@ -165,6 +170,9 @@ static void markDupsForFrags(vector<const ReadEnds *> &vpRe, bool containsPairs,
         }
         for (auto pe : vpRe) {
             if (pe != pBest) {
+                //if (pe->read1IndexInFile == 143876) {
+                //    cout << "zzh find in frags" << endl;
+                //}
                 dupIdx->insert(pe->read1IndexInFile);
             }
         }
@@ -235,10 +243,9 @@ static void markdups(MarkDupDataArg *arg) {
     p.pairDupIdx.clear();
     p.pairOpticalDupIdx.clear();
     p.pairRepIdx.clear();
-    p.pairSingletonIdx.clear();
     /* generateDuplicateIndexes，计算冗余read在所有read中的位置索引 */
     // 先处理 pair
-    processPairs(p.pairs, &p.pairDupIdx, &p.pairOpticalDupIdx, &p.pairRepIdx, &p.pairSingletonIdx);
+    processPairs(p.pairs, &p.pairDupIdx, &p.pairOpticalDupIdx, &p.pairRepIdx);
     // 再处理frag
     processFrags(p.frags, &p.fragDupIdx);
 }
@@ -287,26 +294,12 @@ static inline void refreshFragDupIdx(DPSet<DupInfo> &dupIdx, MDSet<int64_t> &not
     }
 }
 
-// 用来分别处理dup和optical dup
-static void refeshTaskDupInfo(DPSet<DupInfo> &dupIdx, MDSet<int64_t> &opticalDupIdx, DPSet<DupInfo> &repIdx,
-                              MDSet<int64_t> &notDupIdx, MDSet<int64_t> &notOpticalDupIdx, MDSet<int64_t> &notRepIdx,
-                              DPSet<DupInfo> &latterDupIdx, MDSet<int64_t> &latterOpticalDupIdx,
-                              DPSet<DupInfo> &latterRepIdx, MDSet<int64_t> &latterNotDupIdx,
-                              MDSet<int64_t> &latterNotOpticalDupIdx, MDSet<int64_t> &latterNotRepIdx) {
-    for (auto idx : dupIdx) latterDupIdx.insert(idx);
-    for (auto idx : opticalDupIdx) latterOpticalDupIdx.insert(idx);
-    for (auto idx : repIdx) latterRepIdx.insert(idx);
-    for (auto idx : notDupIdx) latterNotDupIdx.insert(idx);
-    for (auto idx : notOpticalDupIdx) latterNotOpticalDupIdx.insert(idx);
-    for (auto idx : notRepIdx) latterNotRepIdx.insert(idx);
-}
-
 /* 最后合并数据并排序 */
 template <typename DupContainer, typename T>
 static void refeshFinalTaskDupInfo(DupContainer &dupIdx, MDSet<int64_t> &notDupIdx, vector<T> &dupArr,
                                    vector<T> &cacheDupIdx1, vector<T> &midArr1) {
-    //midArr.resize(0);
-    //cacheDupIdx.resize(0);
+    // midArr.resize(0);
+    // cacheDupIdx.resize(0);
 
     vector<T> cacheDupIdx;
     vector<T> midArr;
@@ -346,7 +339,7 @@ static void refeshFinalTaskDupInfo(DupContainer &dupIdx, MDSet<int64_t> &notDupI
         }
     }
     // spdlog::info("midArr & dupArr size: {}-{}", midArr.size(), dupArr.size());
-    //dupArr = midArr;
+    // dupArr = midArr;
     dupArr.clear();
     dupArr.assign(midArr.begin(), midArr.end());
     spdlog::info("midArr & dupArr size: {}-{}", midArr.size(), dupArr.size());
@@ -422,7 +415,6 @@ static void doGenRE(PipelineArg &pipeArg) {
     // 用来在genRE阶段计算一些Sort阶段应该计算的数据，保持每个step用时更平衡
     // 轮询每个线程中未找到匹配的read，找到匹配的
     genREData.unpairedDic.clear();
-    genREData.unpairedPosArr.clear();
     vector<ReadEnds> &pairs = genREData.pairsArr[numThread];
     pairs.clear();
     for (int i = 0; i < numThread; ++i) {
@@ -440,15 +432,6 @@ static void doGenRE(PipelineArg &pipeArg) {
         }
     }
     sort(pairs.begin(), pairs.end());
-
-    // create unpaired info
-    for (auto &e : genREData.unpairedDic) {
-        auto posKey = e.second.unpairedRE.posKey;
-        auto &unpairArrInfo = genREData.unpairedPosArr[posKey];
-        unpairArrInfo.unpairedNum++;
-        unpairArrInfo.taskSeq = readData.taskSeq;
-        unpairArrInfo.readNameSet.insert(e.first);
-    }
 }
 // end for step 2 generate read ends
 
@@ -460,7 +443,6 @@ static void doSort(PipelineArg &pipeArg) {
     SortMarkData &smd = *(SortMarkData *)sortData.dataPtr;
 
     smd.unpairedDic = genREData.unpairedDic;
-    smd.unpairedPosArr = genREData.unpairedPosArr;
 
     smd.pairs.clear();
     smd.frags.clear();
@@ -485,10 +467,7 @@ static void doMarkDup(PipelineArg &pipeArg) {
     MarkDupData &mdData = pipeArg.markDupData[pipeArg.markDupOrder % pipeArg.MARKBUFNUM];
     SortData &sortData = pipeArg.sortData[pipeArg.markDupOrder % pipeArg.SORTBUFNUM];
     mdData.taskSeq = pipeArg.markDupOrder;
-    mdData.fragDupIdx.clear();
-    mdData.pairDupIdx.clear();
-    mdData.pairOpticalDupIdx.clear();
-    mdData.pairRepIdx.clear();
+    mdData.clear();
 
     auto tmpPtr = mdData.dataPtr;
     mdData.dataPtr = sortData.dataPtr;
@@ -506,40 +485,50 @@ static void doMarkDup(PipelineArg &pipeArg) {
 }
 
 template <typename T>
-static void refreshDupIdx(T &srcArr, T &insArr, T &delArr) {
+static void refreshDupIdx(T &srcArr, T &insArr) {
     for (auto dup : srcArr) {
         insArr.insert(dup);
-        delArr.erase(dup);
     }
 }
 template <typename T1, typename T2>
-static void refreshNotDupIdx(T1 &srcArr, T2 &delArr1, T2 &delArr2) {
+static void refreshNotDupIdx(T1 &srcArr, T2 &delArr) {
     for (auto dup : srcArr) {
-        delArr1.erase(dup);
-        delArr2.erase(dup);
+        delArr.erase(dup);
     }
 }
 
 static void refreshMarkDupData(DPSet<DupInfo> &dupIdx, MDSet<int64_t> &opticalDupIdx, DPSet<DupInfo> &repIdx,
                                MDSet<int64_t> &notDupIdx, MDSet<int64_t> &notOpticalDupIdx, MDSet<int64_t> &notRepIdx,
-                               MarkDupData &lp, MarkDupData &p) {
-    refreshDupIdx(dupIdx, lp.pairDupIdx, p.pairDupIdx);
-    refreshDupIdx(opticalDupIdx, lp.pairOpticalDupIdx, p.pairOpticalDupIdx);
-    refreshDupIdx(repIdx, lp.pairRepIdx, p.pairRepIdx);
-
-    refreshNotDupIdx(notDupIdx, lp.pairDupIdx, p.pairDupIdx);
-    refreshNotDupIdx(notOpticalDupIdx, lp.pairOpticalDupIdx, p.pairOpticalDupIdx);
-    refreshNotDupIdx(notRepIdx, lp.pairRepIdx, p.pairRepIdx);
+                               MarkDupData &lp) {
+    refreshDupIdx(dupIdx, lp.pairDupIdx);
+    refreshDupIdx(opticalDupIdx, lp.pairOpticalDupIdx);
+    refreshDupIdx(repIdx, lp.pairRepIdx);
+    refreshNotDupIdx(notDupIdx, lp.pairDupIdx);
+    refreshNotDupIdx(notOpticalDupIdx, lp.pairOpticalDupIdx);
+    refreshNotDupIdx(notRepIdx, lp.pairRepIdx);
 }
 
-// for step-5 sort
-static void doIntersect(PipelineArg &pipeArg) {
-    // return;
-    IntersectData &g = pipeArg.intersectData;
-    MarkDupData &lp = pipeArg.markDupData[(pipeArg.intersectOrder - 1) % pipeArg.MARKBUFNUM];
-    MarkDupData &p = pipeArg.markDupData[pipeArg.intersectOrder % pipeArg.MARKBUFNUM];
-    SortMarkData &lpSM = *(SortMarkData *)lp.dataPtr;
-    SortMarkData &pSM = *(SortMarkData *)p.dataPtr;
+static void refreshMarkDupData(DPSet<DupInfo> &dupIdx, MDSet<int64_t> &opticalDupIdx, DPSet<DupInfo> &repIdx,
+                               MDSet<int64_t> &notDupIdx, MDSet<int64_t> &notOpticalDupIdx, MDSet<int64_t> &notRepIdx,
+                               MarkDupData &lp, MarkDupData &p) {
+    refreshDupIdx(dupIdx, lp.pairDupIdx);
+    refreshDupIdx(opticalDupIdx, lp.pairOpticalDupIdx);
+    refreshDupIdx(repIdx, lp.pairRepIdx);
+    refreshNotDupIdx(notDupIdx, lp.pairDupIdx);
+    refreshNotDupIdx(notOpticalDupIdx, lp.pairOpticalDupIdx);
+    refreshNotDupIdx(notRepIdx, lp.pairRepIdx);
+    refreshNotDupIdx(notDupIdx, p.pairDupIdx);
+    refreshNotDupIdx(notOpticalDupIdx, p.pairOpticalDupIdx);
+    refreshNotDupIdx(notRepIdx, p.pairRepIdx);
+    refreshNotDupIdx(dupIdx, p.pairDupIdx);
+    refreshNotDupIdx(opticalDupIdx, p.pairOpticalDupIdx);
+    refreshNotDupIdx(repIdx, p.pairRepIdx);
+}
+
+// 处理相邻数据块之间重叠的部分
+static void processIntersectFragPairs(MarkDupData &lp, MarkDupData &cp) {
+    SortMarkData &lsm = *(SortMarkData *)lp.dataPtr;
+    SortMarkData &csm = *(SortMarkData *)cp.dataPtr;
 
     vector<ReadEnds> reArr;
     DPSet<DupInfo> dupIdx;
@@ -548,210 +537,87 @@ static void doIntersect(PipelineArg &pipeArg) {
     MDSet<int64_t> notOpticalDupIdx;
     MDSet<int64_t> notDupIdx;
     MDSet<int64_t> notRepIdx;
-
     // 先处理重叠的frags
-    getIntersectData(lpSM.frags, pSM.frags, &reArr);
+    getIntersectData(lsm.frags, csm.frags, &reArr);
     processFrags(reArr, &dupIdx, &notDupIdx);
-    refreshDupIdx(dupIdx, lp.fragDupIdx, p.fragDupIdx);
-    refreshNotDupIdx(notDupIdx, lp.fragDupIdx, p.fragDupIdx);
+    refreshDupIdx(dupIdx, lp.fragDupIdx);
+    refreshNotDupIdx(dupIdx, cp.fragDupIdx);
+    refreshNotDupIdx(notDupIdx, lp.fragDupIdx);
+    refreshNotDupIdx(notDupIdx, cp.fragDupIdx);
 
     // 再处理重叠的pairs
     reArr.clear();
     dupIdx.clear();
     notDupIdx.clear();
-    getIntersectData(lpSM.pairs, pSM.pairs, &reArr, true);
 
+    getIntersectData(lsm.pairs, csm.pairs, &reArr, true);
     processPairs(reArr, &dupIdx, &opticalDupIdx, &repIdx, &notDupIdx, &notOpticalDupIdx, &notRepIdx);
-    refreshMarkDupData(dupIdx, opticalDupIdx, repIdx, notDupIdx, notOpticalDupIdx, notRepIdx, lp, p);
+    refreshMarkDupData(dupIdx, opticalDupIdx, repIdx, notDupIdx, notOpticalDupIdx, notRepIdx, lp, cp);
+}
 
-    //  处理之前未匹配的部分
-    map<CalcKey, int64_t> recalcPos;
-    CalcSet<CalcKey> alreadyAdd;  // 与该位点相同的pair都添加到数组里了
-    MDSet<int64_t> addToGlobal;
-    int64_t prevLastPos = 0, nextFirstPos = 0;
-    if (lpSM.frags.size() > 0)
-        prevLastPos = lpSM.frags.back().posKey;
-    if (pSM.frags.size() > 0)
-        nextFirstPos = pSM.frags[0].posKey;
+// 在相邻的数据块之间寻找未匹配的readends, 找到匹配的放到lp里
+static void findUnpairedInDatas(MarkDupData &lp, MarkDupData &cp) {
+    auto &interPairedData = lp.ckeyReadEndsMap;
+    SortMarkData &lsm = *(SortMarkData *)lp.dataPtr;
+    SortMarkData &csm = *(SortMarkData *)cp.dataPtr;
 
-    for (auto &prevUnpair : lpSM.unpairedDic) {  // 遍历上一个任务中的每个未匹配的read
-        auto &readName = prevUnpair.first;
-        auto &prevPosInfo = prevUnpair.second;
-        auto prevFragEnd = prevPosInfo.unpairedRE;                      // 未匹配的read end
-        if (pSM.unpairedDic.find(readName) != pSM.unpairedDic.end()) {  // 在当前这个任务里找到了这个未匹配的read
-            auto &nextPosInfo = pSM.unpairedDic[readName];
-            auto &nextFragEnd = nextPosInfo.unpairedRE;
-            int64_t prevPosKey = prevFragEnd.posKey;
-            modifyPairedEnds(nextFragEnd, &prevFragEnd);  // 在某些clip情况下，poskey可能是后面的read
-            int64_t nextPosKey = max(prevPosKey, nextFragEnd.posKey);
-            CalcKey ck = {prevPosKey, nextPosKey};
-            UnpairedPosInfo *prevUnpairInfoP = nullptr;
-            UnpairedPosInfo *nextUnpairInfoP = nullptr;
-
-            if (lpSM.unpairedPosArr.find(prevPosKey) != lpSM.unpairedPosArr.end())
-                prevUnpairInfoP = &lpSM.unpairedPosArr[prevPosKey];
-            if (pSM.unpairedPosArr.find(prevPosKey) != pSM.unpairedPosArr.end())
-                nextUnpairInfoP = &pSM.unpairedPosArr[prevPosKey];
-            // pos分为两种情况，根据poskey(pair中两个read分别的pos)的位置确定
-            //  1.
-            //  prevpos在交叉部分之前，nextpos在交叉部分之后，这种情况不需要获取pairarr中的数据;
-            //  2.
-            //  prevpos在交叉部分之前，nextpos在交叉部分，需要获取lp中的相等read pair进行重新计算
-            //  复杂情况1. g中包含prevPosKey对应的unpair，p中有对应的pair，此时应该把这些pair考虑进去
-            //  3.
-            //  prevpos在交叉部分，nextpos在交叉部分之后，需要获取p中的相等read pair进行重新计算
-            //  复杂情况2. p中是否包含prevPosKey对应的unpair
-            //  4.
-            //  prevpos在交叉部分，nextpos在交叉部分，需要获取lp和p中的相等read pair进行重新计算
-
-            bool addDataToPos = true;
-            if (alreadyAdd.find(ck) != alreadyAdd.end()) {
-                // 之前已经添加过了，后面就不用再添加数据了，因为同一个位置可能找到两个及以上的unpair数据，处理之前的数据时候可能已经添加了这些数据
-                addDataToPos = false;
-            } else
-                alreadyAdd.insert(ck);
-
-            if (prevPosKey < nextFirstPos) {                   // prevpos在交叉部分之前
-                auto &prevPairArr = prevUnpairInfoP->pairArr;  // prevUnpairInfoP肯定不是nullptr
-                prevPairArr.push_back(prevFragEnd);
-                if (nextPosKey <= prevLastPos && addDataToPos) {  // 第二种情况
-                    getEqualRE(prevFragEnd, lpSM.pairs, &prevPairArr);
-                }
-                // 第一种情况，第二种情况下都会出现，复杂情况一
-                auto gPosInfo = g.unpairedPosArr.find(prevPosKey);
-                if (gPosInfo != g.unpairedPosArr.end()) {  // 可能g和p有匹配的，刚好和该位点一致
-                    auto &gUnpairInfo = gPosInfo->second;
-                    auto pPosInfo = pSM.unpairedPosArr.find(nextPosKey);
-                    if (pPosInfo != pSM.unpairedPosArr.end()) {
-                        auto &pUnpairInfo = pPosInfo->second;
-                        for (auto &rn : gUnpairInfo.readNameSet) {  // 遍历每一个readname，看是否有匹配的
-                            if (pUnpairInfo.readNameSet.find(rn) != pUnpairInfo.readNameSet.end()) {
-                                auto pe = g.unpairedDic[rn].unpairedRE;
-                                auto fe = pSM.unpairedDic[rn].unpairedRE;
-                                modifyPairedEnds(fe, &pe);
-                                prevPairArr.push_back(pe);
-                                g.unpairedDic.erase(rn);
-                                pSM.unpairedDic.erase(rn);
-                            }
-                        }
-                    }
-                }
-                recalcPos[ck] = prevPosInfo.taskSeq;
-                std::sort(prevPairArr.begin(), prevPairArr.end());
-            } else {                                   // prevpos在交叉部分
-                if (nextPosKey > prevLastPos) {        // nextpos在交叉部分之后 第三种情况
-                    if (nextUnpairInfoP != nullptr) {  // 且在pos点，next task有unpair，这样才把这些数据放到next task里
-                        auto &nextPairArr = nextUnpairInfoP->pairArr;
-                        nextPairArr.push_back(prevFragEnd);
-                        auto &prevPairArr = prevUnpairInfoP->pairArr;
-                        prevPairArr.push_back(prevFragEnd);
-                        if (addDataToPos) {
-                            getEqualRE(prevFragEnd, pSM.pairs, &prevPairArr);
-                            getEqualRE(prevFragEnd, pSM.pairs, &nextPairArr);
-                        }
-                        // 将数据放到next task里,（这个位点以后会可能还会计算到，目前方案是都计算，只是把冗余剔除）
-                        recalcPos[ck] = nextPosInfo.taskSeq;
-
-                        std::sort(prevPairArr.begin(), prevPairArr.end());
-                        std::sort(nextPairArr.begin(), nextPairArr.end());
-                    } else {  // next task在该位点没有unpair，那就把数据放到prev task里
-                        auto &prevPairArr = prevUnpairInfoP->pairArr;  // prevUnpairInfoP肯定不是nullptr
-                        prevPairArr.push_back(prevFragEnd);
-                        if (addDataToPos)  // 第二种情况
-                            getEqualRE(prevFragEnd, pSM.pairs, &prevPairArr);
-                        recalcPos[ck] = prevPosInfo.taskSeq;
-                        std::sort(prevPairArr.begin(), prevPairArr.end());
-                    }
-                } else {  // 第四种情况
-                    if (prevUnpairInfoP == nullptr) {
-                        prevUnpairInfoP = &lpSM.unpairedPosArr[prevPosKey];
-                        prevUnpairInfoP->taskSeq = lp.taskSeq;
-                    }
-                    auto &prevPairArr = prevUnpairInfoP->pairArr;
-                    prevPairArr.push_back(prevFragEnd);
-                    if (addDataToPos) {
-                        getEqualRE(prevFragEnd, lpSM.pairs, &prevPairArr);
-                        getEqualRE(prevFragEnd, pSM.pairs, &prevPairArr);
-                    }
-                    recalcPos[ck] = prevPosInfo.taskSeq;
-                    std::sort(prevPairArr.begin(), prevPairArr.end());
-                }
-            }
-            pSM.unpairedDic.erase(readName);                               // 在next task里删除该read
-        } else if (g.unpairedDic.find(readName) != g.unpairedDic.end()) {  // 在遗留数据中找到了匹配的read
-            auto &remainPosInfo = g.unpairedDic[readName];
-            auto remainFragEnd = remainPosInfo.unpairedRE;
-            int64_t remainPosKey = remainFragEnd.posKey;
-            modifyPairedEnds(prevFragEnd, &remainFragEnd);  // 在某些clip情况下，poskey可能是后面的read
-            auto &remainUnpairInfo = g.unpairedPosArr[remainPosKey];
-            auto &remainPairArr = remainUnpairInfo.pairArr;
-            remainPairArr.push_back(remainFragEnd);
-            CalcKey ck = {remainPosKey, prevFragEnd.posKey};
-            recalcPos[ck] = remainPosInfo.taskSeq;
-            std::sort(remainPairArr.begin(), remainPairArr.end());
-
-            g.unpairedDic.erase(readName);
-        } else {  // 都没找到，那就保存到遗留数据里
-            int64_t prevPosKey = prevFragEnd.posKey;
-            g.unpairedDic.insert(prevUnpair);
-            addToGlobal.insert(prevPosKey);
-        }
-    }
-    map<int64_t, TaskSeqDupInfo> taskChanged;
-    MDSet<int64_t> posProcessed;
-    for (auto &e : recalcPos) {
-        auto posKey = e.first.read1Pos;
-        if (posProcessed.find(posKey) != posProcessed.end())
-            continue;
-        posProcessed.insert(posKey);
-        auto taskSeq = e.second;
-        auto &t = taskChanged[taskSeq];
-        // 在对应的任务包含的dup idx里修改结果数据
-        vector<ReadEnds> *pairArrP = nullptr;
-        if (taskSeq < lp.taskSeq)
-            pairArrP = &g.unpairedPosArr[posKey].pairArr;
-        else
-            pairArrP = &lpSM.unpairedPosArr[posKey].pairArr;
-        processPairs(*pairArrP, &t.dupIdx, &t.opticalDupIdx, &t.repIdx, &t.notDupIdx, &t.notOpticalDupIdx,
-                     &t.notRepIdx);
-        if (taskSeq < lp.taskSeq)
-            g.unpairedPosArr.erase(posKey);
-    }
-    // 最后再添加，以防开始赋值，后来这个位置要是又添加了新的数据
-    // 放在这里，因为lp中的unpairedPosArr中的readends可能会被修改（比如optical duplicate）
-#if 0
-    for (auto posKey : addToGlobal) {
-        g.unpairedPosArr[posKey] = lpSM.unpairedPosArr[posKey];
-    }
-#endif
-    /* 不需要把p中找不到lp的unpair，放到global中，否则最后找到pair后，还要再执行一次冗余检测，造成重复的冗余索引 */
-
-    // 更新结果
-    for (auto &e : taskChanged) {
-        auto taskSeq = e.first;
-        auto &t = e.second;
-        if (taskSeq < lp.taskSeq) {
-            refeshTaskDupInfo(t.dupIdx, t.opticalDupIdx, t.repIdx, t.notDupIdx, t.notOpticalDupIdx, t.notRepIdx,
-                              g.latterDupIdxArr[taskSeq], g.latterOpticalDupIdxArr[taskSeq], g.latterRepIdxArr[taskSeq],
-                              g.latterNotDupIdxArr[taskSeq], g.latterNotOpticalDupIdxArr[taskSeq],
-                              g.latterNotRepIdxArr[taskSeq]);
-        } else if (taskSeq == lp.taskSeq) {
-            refreshMarkDupData(t.dupIdx, t.opticalDupIdx, t.repIdx, t.notDupIdx, t.notOpticalDupIdx, t.notRepIdx, lp,
-                               p);
+    for (auto itr = lsm.unpairedDic.begin(); itr != lsm.unpairedDic.end(); ) {  // 遍历上一个任务中的每个未匹配的read
+        auto &lastUnpair = *itr;
+        auto &readName = lastUnpair.first;
+        auto &lastUnpairInfo = lastUnpair.second;
+        auto lastRE = lastUnpairInfo.unpairedRE;                        // 未匹配的read end
+        if (csm.unpairedDic.find(readName) != csm.unpairedDic.end()) {  // 在当前这个任务里找到了这个未匹配的read
+            auto &curUnpairInfo = csm.unpairedDic[readName];
+            auto &curRE = curUnpairInfo.unpairedRE;
+            // 在某些clip情况下，poskey可能是后面的read
+            int64_t lastPosKey = lastRE.posKey;
+            int64_t curPosKey = curRE.posKey;
+            modifyPairedEnds(curRE, &lastRE); // lastRE当做找到匹配后，完整的ReadEnds
+            CalcKey ck = {min(lastPosKey, curPosKey), max(lastPosKey, curPosKey)};
+            auto &pairArr = interPairedData[ck];
+            pairArr.push_back(lastRE);
+            // 从dict中清除配对后的readends
+            csm.unpairedDic.erase(readName);
+            itr = lsm.unpairedDic.erase(itr);
         } else {
-            refreshMarkDupData(t.dupIdx, t.opticalDupIdx, t.repIdx, t.notDupIdx, t.notOpticalDupIdx, t.notRepIdx, p,
-                               lp);  // 把结果放到p中
+            ++itr;
         }
     }
+}
 
-    // 将dupidx放进全局数据
-    g.latterDupIdxArr.push_back(DPSet<DupInfo>());
-    g.latterOpticalDupIdxArr.push_back(MDSet<int64_t>());
-    g.latterRepIdxArr.push_back(DPSet<DupInfo>());
-    g.latterNotDupIdxArr.push_back(MDSet<int64_t>());
-    g.latterNotOpticalDupIdxArr.push_back(MDSet<int64_t>());
-    g.latterNotRepIdxArr.push_back(MDSet<int64_t>());
+// 在global和lp中寻找未匹配的readends, 找到匹配的放到global里
+static void findUnpairedInGlobal(IntersectData &g, MarkDupData &lp) {
+    auto &interPairedData = g.ckeyReadEndsMap;
+    SortMarkData &lsm = *(SortMarkData *)lp.dataPtr;
 
+    for (auto itr = lsm.unpairedDic.begin(); itr != lsm.unpairedDic.end();) {  // 遍历上一个任务中的每个未匹配的read
+        auto &lastUnpair = *itr;
+        auto &readName = lastUnpair.first;
+        auto &lastUnpairInfo = lastUnpair.second;
+        auto lastRE = lastUnpairInfo.unpairedRE;                    // 未匹配的read end
+        if (g.unpairedDic.find(readName) != g.unpairedDic.end()) {  // 在global里找到了这个未匹配的read
+            auto &gUnpairInfo = g.unpairedDic[readName];
+            auto &gRE = gUnpairInfo.unpairedRE;
+            // 在某些clip情况下，poskey可能是后面的read
+            int64_t lastPosKey = lastRE.posKey;
+            int64_t gPosKey = gRE.posKey;
+            modifyPairedEnds(lastRE, &gRE);  // gRE当做找到匹配后，完整的ReadEnds
+            CalcKey ck = {min(lastPosKey, gPosKey), max(lastPosKey, gPosKey)};
+            auto &pairArr = interPairedData[ck];
+            pairArr.push_back(gRE);
+            // 从dict中清除配对后的readends
+            g.unpairedDic.erase(readName);
+            itr = lsm.unpairedDic.erase(itr);
+        } else {
+            ++itr;
+        }
+    }
+    for (auto &unPair : lsm.unpairedDic) {
+        g.unpairedDic.insert(unPair);
+    }
+}
+
+static void putDupinfoToGlobal(IntersectData &g, MarkDupData &lp) {
     g.dupIdxArr.push_back(vector<DupInfo>());
     auto &vIdx = g.dupIdxArr.back();
     lp.pairDupIdx.insert(lp.fragDupIdx.begin(), lp.fragDupIdx.end());
@@ -767,6 +633,84 @@ static void doIntersect(PipelineArg &pipeArg) {
     auto &vRepIdx = g.repIdxArr.back();
     vRepIdx.insert(vRepIdx.end(), lp.pairRepIdx.begin(), lp.pairRepIdx.end());
     std::sort(vRepIdx.begin(), vRepIdx.end());
+}
+
+// for step-5 handle intersect data
+static void doIntersect(PipelineArg &pipeArg) {
+    // spdlog::info("intersect order: {}", pipeArg.intersectOrder);
+    // return;
+    // last, current, next
+    const int kInitIntersectOrder = 2;
+    IntersectData &g = pipeArg.intersectData;
+    MarkDupData &lp = pipeArg.markDupData[(pipeArg.intersectOrder - 2) % pipeArg.MARKBUFNUM];
+    MarkDupData &cp = pipeArg.markDupData[(pipeArg.intersectOrder - 1) % pipeArg.MARKBUFNUM];
+    MarkDupData &np = pipeArg.markDupData[(pipeArg.intersectOrder) % pipeArg.MARKBUFNUM];
+
+    SortMarkData &lsm = *(SortMarkData *)lp.dataPtr;
+    SortMarkData &csm = *(SortMarkData *)cp.dataPtr;
+    SortMarkData &nsm = *(SortMarkData *)np.dataPtr;
+
+    // 处理相邻数据块之间重叠的部分
+    if (pipeArg.intersectOrder == kInitIntersectOrder) { // 第一次运行，需要处理lp和cp
+        processIntersectFragPairs(lp, cp);
+    }
+    processIntersectFragPairs(cp, np);
+
+    // 检查确保lp和np之间没有数据交叉
+    int64_t lastRightPos = 0, curLeftPos = INT64_MAX, nextLeftPos = INT64_MAX;
+    if (lsm.frags.size() > 0) lastRightPos = lsm.frags.back().posKey;
+    if (csm.frags.size() > 0) curLeftPos = csm.frags[0].posKey;
+    if (nsm.frags.size() > 0) nextLeftPos = nsm.frags[0].posKey;
+    if (lastRightPos >= nextLeftPos) {
+        spdlog::error("previous data can not contain readends included by next data block! {} {}", lastRightPos, nextLeftPos);
+    }
+
+    // 在相邻数据块之间查找之前未匹配的readends
+    if (pipeArg.intersectOrder == kInitIntersectOrder) {  // 第一次运行，需要处理lp和cp
+        findUnpairedInDatas(lp, cp);
+    }
+    findUnpairedInDatas(lp, np); // 找到的匹配放到lp里
+    findUnpairedInDatas(cp, np); // 找到的匹配放到cp里
+    // 把lp中未匹配的放到global里保存
+    findUnpairedInGlobal(g, lp);
+
+    // 处理lp中的新找到的匹配
+    TaskSeqDupInfo t;
+    for (auto &ckVal : lp.ckeyReadEndsMap) {
+        auto &ck = ckVal.first;
+        auto &pairArr = ckVal.second;
+        getEqualRE(pairArr[0], lsm.pairs, &pairArr);
+        getEqualRE(pairArr[0], csm.pairs, &pairArr);
+        // 在cp的ckeyReadEndsMap里找一下
+        auto cpKeyItr = cp.ckeyReadEndsMap.find(ck);
+        if (cpKeyItr != cp.ckeyReadEndsMap.end()) {
+            auto &cpPairArr = cpKeyItr->second;
+            pairArr.insert(pairArr.end(), cpPairArr.begin(), cpPairArr.end());
+            cp.ckeyReadEndsMap.erase(cpKeyItr);
+        }
+        sort(pairArr.begin(), pairArr.end());
+        processPairs(pairArr, &t.dupIdx, &t.opticalDupIdx, &t.repIdx, &t.notDupIdx, &t.notOpticalDupIdx,
+                     &t.notRepIdx);
+    }
+    // 处理找到匹配的global数据
+    for (auto itr = g.ckeyReadEndsMap.begin(); itr != g.ckeyReadEndsMap.end();) {
+        auto &ckVal = *itr;
+        auto &ck = ckVal.first;
+        if (ck.read2Pos < curLeftPos) {
+            auto &pairArr = ckVal.second;
+            sort(pairArr.begin(), pairArr.end());
+            processPairs(pairArr, &t.dupIdx, &t.opticalDupIdx, &t.repIdx);
+            itr = g.ckeyReadEndsMap.erase(itr);
+        } else {
+            ++itr;
+        }
+    }
+    lp.ckeyReadEndsMap.clear();
+    // 更新一下冗余结果
+    refreshMarkDupData(t.dupIdx, t.opticalDupIdx, t.repIdx, t.notDupIdx, t.notOpticalDupIdx, t.notRepIdx, lp, cp);
+    // 处理g中新找到的匹配
+
+    putDupinfoToGlobal(g, lp);
 }
 
 static void *pipeRead(void *data) {
@@ -797,8 +741,8 @@ static void *pipeRead(void *data) {
         pipeArg.readData.taskSeq = pipeArg.readOrder;
 
         readNumSum += readNum;
-        inBamBuf.ClearAll();            // 清理上一轮读入的数据
-        pipeArg.readOrder += 1;         // for next
+        inBamBuf.ClearAll();                        // 清理上一轮读入的数据
+        pipeArg.readOrder += 1;                     // for next
         yarn::TWIST(pipeArg.readSig, yarn::BY, 1);  // 读入了一轮数据
     }
     spdlog::info("total reads processed {}", readNumSum);
@@ -809,7 +753,6 @@ static void *pipeGenRE(void *data) {
     auto &genREData = pipeArg.genREData;
     // init generate read ends data by num_thread
     int genREThread = pipeArg.numThread;
-    // / 4;
     for (int i = 0; i < pipeArg.GENBUFNUM; ++i) {
         genREData[i].Init(genREThread);
     }
@@ -834,7 +777,6 @@ static void *pipeGenRE(void *data) {
         /* 处理bam，生成readends */
         PROF_START(gen);
         doGenRE(pipeArg);
-        // usleep(200000);
         PROF_END(gprof[GP_gen], gen);
 
         yarn::POSSESS(pipeArg.genRESig);
@@ -927,11 +869,11 @@ static void *pipeMarkDup(void *data) {
 }
 static void *pipeIntersect(void *data) {
     PipelineArg &pipeArg = *(PipelineArg *)data;
-    pipeArg.intersectOrder = 1;
+    pipeArg.intersectOrder = 2;
     while (1) {
         PROF_START(intersect_wait);
         yarn::POSSESS(pipeArg.markDupSig);
-        yarn::WAIT_FOR(pipeArg.markDupSig, yarn::TO_BE_MORE_THAN, 1);  // 等待有数据
+        yarn::WAIT_FOR(pipeArg.markDupSig, yarn::TO_BE_MORE_THAN, 2);  // 等待有数据
         yarn::RELEASE(pipeArg.markDupSig);
         PROF_END(gprof[GP_intersect_wait], intersect_wait);
 
@@ -958,97 +900,52 @@ static void *pipeIntersect(void *data) {
 }
 
 /* 当所有任务结束后，global data里还有未处理的数据 */
-static void mergeAllTask(PipelineArg &pipeArg) {
-    MarkDupData &lp = pipeArg.markDupData[(pipeArg.markDupOrder - 1) % pipeArg.MARKBUFNUM];
+static void processLastData(PipelineArg &pipeArg) {
     IntersectData &g = pipeArg.intersectData;
-    SortMarkData &lpSM = *(SortMarkData *)lp.dataPtr;
-    // 遗留的未匹配的pair
-    PROF_START(merge_match);
-    for (auto &prevUnpair : lpSM.unpairedDic) {  // 遍历上一个任务中的每个未匹配的read
-        auto &readName = prevUnpair.first;
-        auto &prevPosInfo = prevUnpair.second;
-        auto prevFragEnd = prevPosInfo.unpairedRE;  // 未匹配的read end
+    MarkDupData &lp = pipeArg.markDupData[(pipeArg.intersectOrder - 2) % pipeArg.MARKBUFNUM];
+    MarkDupData &cp = pipeArg.markDupData[(pipeArg.intersectOrder - 1) % pipeArg.MARKBUFNUM];
 
-        if (g.unpairedDic.find(readName) != g.unpairedDic.end()) {  // 在遗留数据中找到了匹配的read
-            auto &remainPosInfo = g.unpairedDic[readName];
-            auto remainFragEnd = remainPosInfo.unpairedRE;
-            int64_t remainPosKey = remainFragEnd.posKey;
-            modifyPairedEnds(prevFragEnd, &remainFragEnd);  // 在某些clip情况下，poskey可能是后面的read
-            auto &remainUnpairInfo = g.unpairedPosArr[remainPosKey];
+    SortMarkData &lsm = *(SortMarkData *)lp.dataPtr;
+    SortMarkData &csm = *(SortMarkData *)cp.dataPtr;
 
-            remainUnpairInfo.pairArr.push_back(remainFragEnd);
-            g.unpairedDic.erase(readName);
-        } else {
-            g.unpairedDic.insert(prevUnpair);  // 用来记录没有匹配的read个数
-        }
+    spdlog::info("last data size: g{}-lp{}-cp{}", g.unpairedDic.size(), lsm.unpairedDic.size(), csm.unpairedDic.size());
+
+    // 把lp中未匹配的放到global里保存
+    findUnpairedInGlobal(g, lp);
+    findUnpairedInGlobal(g, cp);
+
+    // 处理lp中的新找到的匹配
+    TaskSeqDupInfo t;
+    for (auto &ckVal : lp.ckeyReadEndsMap) {
+        auto &ck = ckVal.first;
+        auto &pairArr = ckVal.second;
+        getEqualRE(pairArr[0], lsm.pairs, &pairArr);
+        getEqualRE(pairArr[0], csm.pairs, &pairArr);
+        sort(pairArr.begin(), pairArr.end());
+        processPairs(pairArr, &t.dupIdx, &t.opticalDupIdx, &t.repIdx, &t.notDupIdx, &t.notOpticalDupIdx, &t.notRepIdx);
     }
-    PROF_END(gprof[GP_merge_match], merge_match);
-
-    PROF_START(merge_markdup);
-    map<int64_t, TaskSeqDupInfo> taskChanged;
-    for (auto &e : g.unpairedPosArr) {
-        auto posKey = e.first;
-        auto taskSeq = e.second.taskSeq;
-        auto &t = taskChanged[taskSeq];
-        auto &arr = g.unpairedPosArr[posKey].pairArr;
-
-        if (arr.size() > 1) {
-            std::sort(arr.begin(), arr.end());
-            processPairs(arr, &t.dupIdx, &t.opticalDupIdx, &t.repIdx, &t.notDupIdx, &t.notOpticalDupIdx, &t.notRepIdx);
-        }
+    // 处理找到匹配的global数据
+    for (auto itr = g.ckeyReadEndsMap.begin(); itr != g.ckeyReadEndsMap.end();) {
+        auto &ckVal = *itr;
+        auto &ck = ckVal.first;
+        auto &pairArr = ckVal.second;
+        sort(pairArr.begin(), pairArr.end());
+        processPairs(pairArr, &t.dupIdx, &t.opticalDupIdx, &t.repIdx);
+        itr = g.ckeyReadEndsMap.erase(itr);
     }
-    // 更新结果
-    vector<int64_t> addDup;
-    map<int64_t, int64_t> ndPosVal;
-    for (auto &e : taskChanged) {
-        auto taskSeq = e.first;
-        auto &t = e.second;
-        refeshTaskDupInfo(t.dupIdx, t.opticalDupIdx, t.repIdx, t.notDupIdx, t.notOpticalDupIdx, t.notRepIdx,
-                          g.latterDupIdxArr[taskSeq], g.latterOpticalDupIdxArr[taskSeq], g.latterRepIdxArr[taskSeq],
-                          g.latterNotDupIdxArr[taskSeq], g.latterNotOpticalDupIdxArr[taskSeq],
-                          g.latterNotRepIdxArr[taskSeq]);
-    }
-    g.unpairedPosArr.clear();
-    PROF_END(gprof[GP_merge_markdup], merge_markdup);
+    // 更新一下冗余结果
+    refreshMarkDupData(t.dupIdx, t.opticalDupIdx, t.repIdx, t.notDupIdx, t.notOpticalDupIdx, t.notRepIdx, lp, cp);
+    // 处理g中新找到的匹配
 
-//    // 将dupidx放进全局数据
-    PROF_START(merge_update);
-    vector<DupInfo> cacheDupIdx;
-    vector<DupInfo> midArr;
-    vector<int64_t> intCacheDupIdx;
-    vector<int64_t> intMidArr;
-    for (int i = 0; i < (int)g.dupIdxArr.size() - 1; ++i) {
-        refeshFinalTaskDupInfo(g.latterDupIdxArr[i], g.latterNotDupIdxArr[i], g.dupIdxArr[i], cacheDupIdx, midArr);
-    }
-    for (int i = 0; i < (int)g.opticalDupIdxArr.size() - 1; ++i)
-        refeshFinalTaskDupInfo(g.latterOpticalDupIdxArr[i], g.latterNotOpticalDupIdxArr[i], g.opticalDupIdxArr[i],
-                               intCacheDupIdx, intMidArr);
-    for (int i = 0; i < (int)g.repIdxArr.size() - 1; ++i)
-        refeshFinalTaskDupInfo(g.latterRepIdxArr[i], g.latterNotRepIdxArr[i], g.repIdxArr[i], cacheDupIdx, midArr);
-    PROF_END(gprof[GP_merge_update], merge_update);
+    putDupinfoToGlobal(g, lp);
+    putDupinfoToGlobal(g, cp);
 
-    PROF_START(merge_add);
-    g.dupIdxArr.push_back(vector<DupInfo>());
-    auto &vIdx = g.dupIdxArr.back();
-    lp.pairDupIdx.insert(lp.fragDupIdx.begin(), lp.fragDupIdx.end());
-    vIdx.insert(vIdx.end(), lp.pairDupIdx.begin(), lp.pairDupIdx.end());
-    std::sort(vIdx.begin(), vIdx.end());
-
-    g.opticalDupIdxArr.push_back(vector<int64_t>());
-    auto &vOpticalIdx = g.opticalDupIdxArr.back();
-    vOpticalIdx.insert(vOpticalIdx.end(), lp.pairOpticalDupIdx.begin(), lp.pairOpticalDupIdx.end());
-    std::sort(vOpticalIdx.begin(), vOpticalIdx.end());
-
-    g.repIdxArr.push_back(vector<DupInfo>());
-    auto &vRepIdx = g.repIdxArr.back();
-    vRepIdx.insert(vRepIdx.end(), lp.pairRepIdx.begin(), lp.pairRepIdx.end());
-    std::sort(vRepIdx.begin(), vRepIdx.end());
-    PROF_END(gprof[GP_merge_add], merge_add);
+    spdlog::info("last data size: g{}-lp{}-cp{}", g.unpairedDic.size(), lsm.unpairedDic.size(), csm.unpairedDic.size());
 }
 
 static void parallelPipeline() {
     PipelineArg pipeArg(&nsgv::gDupRes);
-    //PipelineArg &pipeArg = nsgv::gPipe;
+    // PipelineArg &pipeArg = nsgv::gPipe;
     pipeArg.numThread = nsgv::gMdArg.NUM_THREADS;
 
     pthread_t tidArr[5];
@@ -1059,7 +956,7 @@ static void parallelPipeline() {
     pthread_create(&tidArr[4], 0, pipeIntersect, &pipeArg);
     for (int i = 0; i < 5; ++i) pthread_join(tidArr[i], 0);
     PROF_START(merge_result);
-    mergeAllTask(pipeArg);
+    processLastData(pipeArg);
     PROF_END(gprof[GP_merge_result], merge_result);
 
     spdlog::info("pipeArg size : {}", pipeArg.byteSize());
@@ -1072,7 +969,7 @@ static void parallelPipeline() {
 }
 
 /* 并行流水线方式处理数据，标记冗余 */
-void pipelineMarkDups() {
+void NewPipeMarkDups() {
     if (nsgv::gMdArg.NUM_THREADS > 1)
         return parallelPipeline();
 
@@ -1116,5 +1013,5 @@ void pipelineMarkDups() {
         inBamBuf.ClearAll();     // 清理上一轮读入的数据
         pipeArg.readOrder += 1;  // for next
     }
-    mergeAllTask(pipeArg);
+    processLastData(pipeArg);
 }

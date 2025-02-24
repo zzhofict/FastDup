@@ -78,7 +78,7 @@ struct ReadEnds : PhysicalLocation {
 
     /* zzh增加的成员变量 */
     int64_t posKey = -1;  // 根据位置信息生成的关键字 return (int64_t)tid <<
-                          // MAX_CONTIG_LEN_SHIFT | (int64_t)pos;
+                          // MAX_CONTIG_LEN_SHIFT | (int64_t)pos; （包含clip的序列，也就是可能比map结果更偏左）
 
     /* 用来做一些判断，因为一些readends会做多次操作，比如task之间有重叠等等 */
     int oprateTime = 0;
@@ -148,12 +148,12 @@ struct ReadEnds : PhysicalLocation {
             comp = read2ReferenceIndex - o.read2ReferenceIndex;
         if (comp == 0)
             comp = read2Coordinate - o.read2Coordinate;
-        if (comp == 0)
-            comp = tile - o.tile;
-        if (comp == 0)
-            comp = x - o.x;
-        if (comp == 0)
-            comp - y - o.y;
+        //if (comp == 0)
+        //    comp = tile - o.tile;
+        //if (comp == 0)
+        //    comp = x - o.x;
+        //if (comp == 0)
+        //    comp - y - o.y;
         if (comp == 0)
             comp = (int)(read1IndexInFile - o.read1IndexInFile);
         if (comp == 0)

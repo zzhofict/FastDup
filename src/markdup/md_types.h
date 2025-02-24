@@ -49,13 +49,22 @@ struct CalcKeyHash {
 
 /* 用来记录冗余索引相关的信息 */
 struct DupInfo {
-    int64_t idx;
-    int64_t repIdx = 0;  // 这一批冗余中的非冗余read 代表的索引
     int16_t dupSet = 0;  // dup set size
+    uint16_t repIdxHigh = 0;  // 这一批冗余中的非冗余read 代表的索引
+    uint32_t repIdxLow = 0;
+    int64_t idx;
 
     DupInfo() : DupInfo(-1, 0, 0) {}
     DupInfo(int64_t idx_) : DupInfo(idx_, 0, 0) {}
-    DupInfo(int64_t idx_, int64_t repIdx_, int dupSet_) : idx(idx_), repIdx(repIdx_), dupSet(dupSet_) {}
+    DupInfo(int64_t idx_, int64_t repIdx_, int dupSet_) : idx(idx_), dupSet(dupSet_) {
+        repIdxHigh = repIdx_ >> 32;
+        repIdxLow = (uint32_t)repIdx_;
+    }
+    int64_t GetRepIdx() {
+        int64_t repIdx = repIdxHigh;
+        repIdx = (repIdx << 32) | repIdxLow;
+        return repIdx;
+    }
     bool operator<(const DupInfo &o) const { return idx < o.idx; }
     bool operator>(const DupInfo &o) const { return idx > o.idx; }
     operator int64_t() const { return idx; }
@@ -110,8 +119,8 @@ struct UnpairedPosInfo {
 // typedef unordered_map<int64_t, UnpairedPosInfo> UnpairedPositionMap;
 
 typedef tsl::robin_map<string, UnpairedREInfo> UnpairedNameMap;  // 以read name为索引，保存未匹配的pair read
-typedef tsl::robin_map<int64_t, UnpairedPosInfo>
-    UnpairedPositionMap;  // 以位点为索引，保存该位点包含的对应的所有read和该位点包含的剩余未匹配的read的数量
+typedef tsl::robin_map<int64_t, UnpairedPosInfo> UnpairedPositionMap;  // 以位点为索引，保存该位点包含的对应的所有read和该位点包含的剩余未匹配的read的数量
+typedef map<CalcKey, vector<ReadEnds>> CkeyReadEndsMap;  // 以calckey为关键字，保存在相邻数据块之前找到的匹配readEnds
 
 /* 单线程处理冗余参数结构体 */
 struct MarkDupDataArg {
@@ -190,5 +199,37 @@ struct DupIdxQueue {
             }
         }
         return len - popNum;
+    }
+
+    uint64_t RealSize() {
+        uint64_t len = 0;
+        auto preTop = minHeap.top();
+        DupInfo dupIdx = this->Pop();
+        DupInfo nextDup = dupIdx;
+        auto topIdx = minHeap.top();
+
+        ofstream ofs("dupn-noxyz.txt");
+
+        while (dupIdx != -1) {
+            ++len;
+            while (true) {
+                topIdx = minHeap.top();
+                nextDup = this->Pop();
+                if (nextDup != dupIdx) {
+                    dupIdx = nextDup;
+                    break;
+                } else {
+                    cout << "the same dup: " << dupIdx << '\t' << preTop.arrId << '\t' << preTop.arrIdx << '\t'
+                         << preTop.dupIdx << '\t' << topIdx.arrId << '\t' << topIdx.arrIdx << '\t' << topIdx.dupIdx
+                         << endl;
+                }
+            }
+            //ofs << topIdx.arrId << '\t' << topIdx.arrIdx << '\t' << topIdx.dupIdx << endl;
+            ofs << topIdx.dupIdx << endl;
+            dupIdx = nextDup;
+            preTop = topIdx;
+        }
+        ofs.close();
+        return len;
     }
 };

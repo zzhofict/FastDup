@@ -64,7 +64,7 @@ struct MarkDupsArg {
 
     int NUM_THREADS = 1;
 
-    size_t MAX_MEM = ((size_t)1) << 31;  // 最小2G
+    size_t MAX_MEM = ((size_t)1) << 30; // << 31  // 最小2G
 
     bool DUPLEX_IO = true; // 同时读写
 

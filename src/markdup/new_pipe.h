@@ -24,14 +24,14 @@ struct GenREData {
         }
     }
     UnpairedNameMap unpairedDic;         // 代替sort step中一部分计算
-    UnpairedPositionMap unpairedPosArr;  //
     size_t byteSize() {
         size_t bytes = 0;
-        for (auto &v : pairsArr) for (auto &r : v) bytes += sizeof(r);
-        for (auto &v : fragsArr) for (auto &r : v) bytes += sizeof(r);
+        for (auto &v : pairsArr)
+            for (auto &r : v) bytes += sizeof(r);
+        for (auto &v : fragsArr)
+            for (auto &r : v) bytes += sizeof(r);
         for (auto &m : unpairedDicArr) bytes += m.size() * 100;
         bytes += unpairedDic.size() * 100;
-        bytes += unpairedPosArr.size() * 1000;
         return bytes;
     }
 };
@@ -40,13 +40,11 @@ struct SortMarkData {
     vector<ReadEnds> pairs;              // 成对的reads
     vector<ReadEnds> frags;              // 暂未找到配对的reads
     UnpairedNameMap unpairedDic;         // 用来寻找pair end
-    UnpairedPositionMap unpairedPosArr;  // 存放未匹配的ReadEnd对应位点的所有ReadEnd，为了避免重复存储
     size_t byteSize() {
         size_t bytes = 0;
         for (auto &r : pairs) bytes += sizeof(r);
         for (auto &r : frags) bytes += sizeof(r);
         bytes += unpairedDic.size() * 100;
-        bytes += unpairedPosArr.size() * 1000;
         return bytes;
     }
 };
@@ -61,8 +59,17 @@ struct MarkDupData {
     MDSet<int64_t> pairOpticalDupIdx;  // optical冗余read的索引
     DPSet<DupInfo> fragDupIdx;         // frag的冗余read的索引
     DPSet<DupInfo> pairRepIdx;         // pair的dupset代表read的索引
+    CkeyReadEndsMap ckeyReadEndsMap;
 
     volatile void *dataPtr;  // SortMarkData pointer
+
+    void clear() {
+        fragDupIdx.clear();
+        pairDupIdx.clear();
+        pairOpticalDupIdx.clear();
+        pairRepIdx.clear();
+        ckeyReadEndsMap.clear();
+    }
 
     size_t byteSize() {
         size_t bytes = 0;
@@ -81,7 +88,8 @@ struct DupResult {
     size_t byteSize() {
         size_t bytes = 0;
         size_t tmp = 0;
-        for (auto &v : dupIdxArr) for (auto &r : v) tmp += sizeof(r);
+        for (auto &v : dupIdxArr)
+            for (auto &r : v) tmp += sizeof(r);
         spdlog::info("dupIdxArr size : {} GB", tmp / 1024.0 / 1024 / 1024);
         bytes += tmp;
         tmp = 0;
@@ -90,7 +98,8 @@ struct DupResult {
         spdlog::info("opticalDupIdxArr size : {} GB", tmp / 1024.0 / 1024 / 1024);
         bytes += tmp;
         tmp = 0;
-        for (auto &v : repIdxArr) for (auto &r : v) tmp += sizeof(r);
+        for (auto &v : repIdxArr)
+            for (auto &r : v) tmp += sizeof(r);
         spdlog::info("repIdxArr size : {} GB", tmp / 1024.0 / 1024 / 1024);
         bytes += tmp;
         spdlog::info("result size : {} GB", bytes / 1024.0 / 1024 / 1024);
@@ -101,42 +110,26 @@ struct DupResult {
 
 struct IntersectData {
     UnpairedNameMap unpairedDic;  // 用来寻找pair end
-    UnpairedPositionMap unpairedPosArr;
+    CkeyReadEndsMap ckeyReadEndsMap;
 
     // 每个task对应一个vector
     vector<vector<DupInfo>> &dupIdxArr;
     vector<vector<int64_t>> &opticalDupIdxArr;
     vector<vector<DupInfo>> &repIdxArr;
 
-    // 用来存放后续计算的数据
-    vector<DPSet<DupInfo>> latterDupIdxArr;
-    vector<MDSet<int64_t>> latterOpticalDupIdxArr;
-    vector<DPSet<DupInfo>> latterRepIdxArr;
-    vector<MDSet<int64_t>> latterNotDupIdxArr;
-    vector<MDSet<int64_t>> latterNotOpticalDupIdxArr;
-    vector<MDSet<int64_t>> latterNotRepIdxArr;
-
-    IntersectData(DupResult *resPtr) : 
-        dupIdxArr(resPtr->dupIdxArr),
-        opticalDupIdxArr(resPtr->opticalDupIdxArr),
-        repIdxArr(resPtr->repIdxArr)
-    {}
+    IntersectData(DupResult *resPtr)
+        : dupIdxArr(resPtr->dupIdxArr), opticalDupIdxArr(resPtr->opticalDupIdxArr), repIdxArr(resPtr->repIdxArr) {}
 
     size_t byteSize() {
         size_t bytes = 0;
         bytes += unpairedDic.size() * 100;
-        bytes += unpairedPosArr.size() * 1000;
-        for (auto &v : dupIdxArr) for (auto &r : v) bytes += sizeof(r);
-        for (auto &v : opticalDupIdxArr) for (auto &r : v) bytes += sizeof(r);
-        for (auto &v : repIdxArr) for (auto &r : v) bytes += sizeof(r);
+        for (auto &v : dupIdxArr)
+            for (auto &r : v) bytes += sizeof(r);
+        for (auto &v : opticalDupIdxArr)
+            for (auto &r : v) bytes += sizeof(r);
+        for (auto &v : repIdxArr)
+            for (auto &r : v) bytes += sizeof(r);
         spdlog::info("result size : {}", bytes);
-
-        for (auto &s : latterDupIdxArr) bytes += s.size() * sizeof(DupInfo);
-        for (auto &s : latterOpticalDupIdxArr) bytes += s.size() * sizeof(DupInfo);
-        for (auto &s : latterRepIdxArr) bytes += s.size() * sizeof(DupInfo);
-        for (auto &s : latterNotDupIdxArr) bytes += s.size() * sizeof(DupInfo);
-        for (auto &s : latterNotOpticalDupIdxArr) bytes += s.size() * sizeof(DupInfo);
-        for (auto &s : latterNotRepIdxArr) bytes += s.size() * sizeof(DupInfo);
 
         return bytes;
     }
@@ -146,7 +139,7 @@ struct IntersectData {
 struct PipelineArg {
     static const int GENBUFNUM = 2;
     static const int SORTBUFNUM = 2;
-    static const int MARKBUFNUM = 3;
+    static const int MARKBUFNUM = 4;
     uint64_t readOrder = 0;
     uint64_t genREOrder = 0;
     uint64_t sortOrder = 0;
@@ -165,7 +158,7 @@ struct PipelineArg {
     yarn::lock_t *markDupSig;
 
     PipelineArg(DupResult *resPtr) : intersectData(resPtr) {
-        readSig = yarn::NEW_LOCK(0);  // 最大值1, 双buffer在bambuf中实现了，对调用透明
+        readSig = yarn::NEW_LOCK(0);   // 最大值1, 双buffer在bambuf中实现了，对调用透明
         genRESig = yarn::NEW_LOCK(0);  // 最大值2, 双buffer
         sortSig = yarn::NEW_LOCK(0);
         markDupSig = yarn::NEW_LOCK(0);
@@ -268,4 +261,4 @@ struct ReadEndsHeap {
 };
 
 // 并行运行mark duplicate
-void pipelineMarkDups();
+void NewPipeMarkDups();
