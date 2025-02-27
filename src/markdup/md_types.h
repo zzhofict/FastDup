@@ -27,24 +27,58 @@ struct UnpairedREInfo {
 
 /* 对于一个pair数据，一个完整的计算点，包含read1的比对位置和read2的比对位置 */
 struct CalcKey {
-    int64_t read1Pos;
-    int64_t read2Pos;
+    int8_t orientation = -1;
+    int32_t read1ReferenceIndex = -1;
+    int32_t read1Coordinate = -1;
+    int32_t read2ReferenceIndex = -1;
+    int32_t read2Coordinate = -1;
+
+    CalcKey() {}
+    CalcKey(const ReadEnds &re) {
+        orientation = re.orientation;
+        read1ReferenceIndex = re.read1ReferenceIndex;
+        read1Coordinate = re.read1Coordinate;
+        read2ReferenceIndex = re.read2ReferenceIndex;
+        read2Coordinate = re.read2Coordinate;
+    }
+
+    int64_t Read1Pos() const { return BamWrap::bam_global_pos(read1ReferenceIndex, read1Coordinate); }
+
+    int64_t Read2Pos() const { return BamWrap::bam_global_pos(read2ReferenceIndex, read2Coordinate); }
+
     bool operator<(const CalcKey &o) const {
-        int comp = (int)(read1Pos - o.read1Pos);
+        int comp = read1ReferenceIndex - o.read1ReferenceIndex;
         if (comp == 0)
-            comp = (int)(read2Pos - o.read2Pos);
+            comp = read1Coordinate - o.read1Coordinate;
+        // 需要orientation，因为要跟排序的比较方式和顺序一致
+        if (comp == 0)
+            comp = orientation - o.orientation;
+        if (comp == 0)
+            comp = read2ReferenceIndex - o.read2ReferenceIndex;
+        if (comp == 0)
+            comp = read2Coordinate - o.read2Coordinate;
         return comp < 0;
     }
-    bool operator==(const CalcKey &o) const { return read1Pos == o.read1Pos && read2Pos == o.read2Pos; }
-    std::size_t operator()(const CalcKey &o) const {
-        return std::hash<int64_t>()(read1Pos) ^ std::hash<int64_t>()(read2Pos);
+    bool operator==(const CalcKey &o) const {
+        return read1ReferenceIndex == o.read1ReferenceIndex && read1Coordinate == o.read1Coordinate &&
+               orientation == o.orientation && read2ReferenceIndex == o.read2ReferenceIndex &&
+               read2Coordinate == o.read2Coordinate;
+    }
+    std::size_t operator()() const {
+        size_t h1 = read1ReferenceIndex;
+        h1 = (h1 << 40) | (read1Coordinate << 8) | orientation;
+        size_t h2 = read2ReferenceIndex;
+        h2 = (h2 << 32) | read2Coordinate;
+        return std::hash<int64_t>()(h1) ^ std::hash<int64_t>()(h2);
     }
 };
 
 struct CalcKeyHash {
-    std::size_t operator()(const CalcKey &o) const {
-        return std::hash<int64_t>()(o.read1Pos) ^ std::hash<int64_t>()(o.read2Pos);
-    }
+    std::size_t operator()(const CalcKey &o) const { return o(); }
+};
+
+struct CalcKeyEqual {
+    bool operator()(const CalcKey &o1, const CalcKey &o2) const { return o1 == o2; }
 };
 
 /* 用来记录冗余索引相关的信息 */
@@ -119,8 +153,13 @@ struct UnpairedPosInfo {
 // typedef unordered_map<int64_t, UnpairedPosInfo> UnpairedPositionMap;
 
 typedef tsl::robin_map<string, UnpairedREInfo> UnpairedNameMap;  // 以read name为索引，保存未匹配的pair read
+//typedef map<string, UnpairedREInfo> UnpairedNameMap;  // 以read name为索引，保存未匹配的pair read
 typedef tsl::robin_map<int64_t, UnpairedPosInfo> UnpairedPositionMap;  // 以位点为索引，保存该位点包含的对应的所有read和该位点包含的剩余未匹配的read的数量
-typedef map<CalcKey, vector<ReadEnds>> CkeyReadEndsMap;  // 以calckey为关键字，保存在相邻数据块之前找到的匹配readEnds
+// typedef map<CalcKey, vector<ReadEnds>> CkeyReadEndsMap;  // 以calckey为关键字，保存在相邻数据块之前找到的匹配readEnds
+typedef unordered_map<CalcKey, vector<ReadEnds>, CalcKeyHash, CalcKeyEqual>
+    CkeyReadEndsMap;  // 以calckey为关键字，保存在相邻数据块之前找到的匹配readEnds
+// typedef tsl::robin_map<CalcKey, vector<ReadEnds>, CalcKeyHash, CalcKeyEqual> CkeyReadEndsMap;  //
+// 以calckey为关键字，保存在相邻数据块之前找到的匹配readEnds
 
 /* 单线程处理冗余参数结构体 */
 struct MarkDupDataArg {
@@ -208,7 +247,8 @@ struct DupIdxQueue {
         DupInfo nextDup = dupIdx;
         auto topIdx = minHeap.top();
 
-        ofstream ofs("dupn-noxyz.txt");
+        ofstream ofs("na12878.txt");
+        ofstream ofs1("na12878-all.txt");
 
         while (dupIdx != -1) {
             ++len;
@@ -224,7 +264,7 @@ struct DupIdxQueue {
                          << endl;
                 }
             }
-            //ofs << topIdx.arrId << '\t' << topIdx.arrIdx << '\t' << topIdx.dupIdx << endl;
+            ofs1 << topIdx.arrId << '\t' << topIdx.arrIdx << '\t' << topIdx.dupIdx << endl;
             ofs << topIdx.dupIdx << endl;
             dupIdx = nextDup;
             preTop = topIdx;

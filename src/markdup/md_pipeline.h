@@ -30,8 +30,9 @@ struct GenREData {
             for (auto &r : v) bytes += sizeof(r);
         for (auto &v : fragsArr)
             for (auto &r : v) bytes += sizeof(r);
-        for (auto &m : unpairedDicArr) bytes += m.size() * 100;
-        bytes += unpairedDic.size() * 100;
+        spdlog::info("genRE readends size : {} GB", bytes / 1024.0 / 1024 / 1024);
+        for (auto &m : unpairedDicArr) bytes += m.size() * sizeof(*m.begin());
+        bytes += unpairedDic.size() * sizeof(*unpairedDic.begin());
         return bytes;
     }
 };
@@ -44,7 +45,8 @@ struct SortMarkData {
         size_t bytes = 0;
         for (auto &r : pairs) bytes += sizeof(r);
         for (auto &r : frags) bytes += sizeof(r);
-        bytes += unpairedDic.size() * 100;
+        spdlog::info("sortmark readends size : {} GB", bytes / 1024.0 / 1024 / 1024);
+        bytes += unpairedDic.bucket_count() * sizeof(*unpairedDic.begin());
         return bytes;
     }
 };
@@ -122,14 +124,14 @@ struct IntersectData {
 
     size_t byteSize() {
         size_t bytes = 0;
-        bytes += unpairedDic.size() * 100;
+        bytes += unpairedDic.size() * sizeof(*unpairedDic.begin());
         for (auto &v : dupIdxArr)
             for (auto &r : v) bytes += sizeof(r);
         for (auto &v : opticalDupIdxArr)
             for (auto &r : v) bytes += sizeof(r);
         for (auto &v : repIdxArr)
             for (auto &r : v) bytes += sizeof(r);
-        spdlog::info("result size : {}", bytes);
+        spdlog::info("result size : {} GB", bytes / 1024.0 / 1024 / 1024);
 
         return bytes;
     }
@@ -189,16 +191,16 @@ struct PipelineArg {
         size_t tmp = 0;
         for (int i = 0; i < SORTBUFNUM + MARKBUFNUM; ++i) tmp += sortMarkData[i].byteSize();
         bytes += tmp;
-        spdlog::info("sortMarkData size : {}", tmp);
+        spdlog::info("sortMarkData size : {} GB", tmp / 1024.0 / 1024 / 1024);
         for (int i = 0; i < GENBUFNUM; ++i) tmp += genREData[i].byteSize();
         bytes += tmp;
-        spdlog::info("genREData size : {}", tmp);
+        spdlog::info("genREData size : {} GB", tmp / 1024.0 / 1024 / 1024);
         for (int i = 0; i < MARKBUFNUM; ++i) tmp += markDupData[i].byteSize();
         bytes += tmp;
-        spdlog::info("markDupData size : {}", tmp);
+        spdlog::info("markDupData size : {} GB", tmp / 1024.0 / 1024 / 1024);
         tmp += intersectData.byteSize();
         bytes += tmp;
-        spdlog::info("intersectData size : {}", tmp);
+        spdlog::info("intersectData size : {} GB", tmp / 1024.0 / 1024 / 1024);
 
         return bytes;
     }
@@ -261,4 +263,4 @@ struct ReadEndsHeap {
 };
 
 // 并行运行mark duplicate
-void NewPipeMarkDups();
+void PipelineMarkDups();

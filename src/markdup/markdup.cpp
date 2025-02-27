@@ -18,8 +18,7 @@ Date : 2023/10/23
 #include "fastdup_version.h"
 #include "md_args.h"
 #include "md_funcs.h"
-// #include "pipeline_md.h"
-#include "new_pipe.h"
+#include "md_pipeline.h"
 #include "read_name_parser.h"
 #include "util/profiling.h"
 
@@ -99,8 +98,7 @@ int MarkDuplicates() {
 
     /* 冗余检查和标记 */
     PROF_START(markdup_all);
-    //pipelineMarkDups();
-    NewPipeMarkDups();
+    PipelineMarkDups();
     PROF_END(gprof[GP_markdup_all], markdup_all);
 
     /* 标记冗余, 将处理后的结果写入文件 */
@@ -165,7 +163,7 @@ int MarkDuplicates() {
     spdlog::info("{} duplicate reads found", dupIdxQue.Size());
     spdlog::info("{} optical reads found", opticalIdxQue.Size());
     spdlog::info("{} represent reads found", repIdxQue.Size());
-    spdlog::info("real dup size: {}", dupIdxQue.RealSize());
+    // spdlog::info("real dup size: {}", dupIdxQue.RealSize());
 
     return 0;
 

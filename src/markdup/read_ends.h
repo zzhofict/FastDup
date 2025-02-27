@@ -134,8 +134,20 @@ struct ReadEnds : PhysicalLocation {
         return comp < 0;
     }
 
-    // 找某一个位置的所有readend时需要
-    static bool PairsLittleThan(const ReadEnds &lhs, const ReadEnds &rhs) { return ReadLittleThan(lhs, rhs, true); }
+    // 找某一个位置的所有readend时需要, 只对比位点，不对比orientation
+    static bool PairsLittleThan(const ReadEnds &a, const ReadEnds &b) {
+        int comp = a.read1ReferenceIndex - b.read1ReferenceIndex;
+        if (comp == 0)
+            comp = a.read1Coordinate - b.read1Coordinate;
+        // 需要orientation，因为要跟排序的比较方式和顺序一致
+        if (comp == 0)
+            comp = a.orientation - b.orientation;
+        if (comp == 0)
+            comp = a.read2ReferenceIndex - b.read2ReferenceIndex;
+        if (comp == 0)
+            comp = a.read2Coordinate - b.read2Coordinate;
+        return comp < 0;
+    }
 
     // 比较函数
     bool operator<(const ReadEnds &o) const {
