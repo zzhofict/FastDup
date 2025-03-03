@@ -32,37 +32,69 @@ struct CalcKey {
     int32_t read1Coordinate = -1;
     int32_t read2ReferenceIndex = -1;
     int32_t read2Coordinate = -1;
+    int64_t left = -1;
+    int64_t right = -1;
 
     CalcKey() {}
+    static CalcKey MaxCK() {
+        CalcKey ck;
+        ck.left = ck.right = INT64_MAX;
+        return ck;
+    }
+    static CalcKey MinCK() {
+        CalcKey ck;
+        ck.left = ck.right = INT64_MIN;
+        return ck;
+    }
+
     CalcKey(const ReadEnds &re) {
         orientation = re.orientation;
         read1ReferenceIndex = re.read1ReferenceIndex;
         read1Coordinate = re.read1Coordinate;
         read2ReferenceIndex = re.read2ReferenceIndex;
         read2Coordinate = re.read2Coordinate;
+        left = Read1Pos();
+        right = Read2Pos();
     }
 
     int64_t Read1Pos() const { return BamWrap::bam_global_pos(read1ReferenceIndex, read1Coordinate); }
-
     int64_t Read2Pos() const { return BamWrap::bam_global_pos(read2ReferenceIndex, read2Coordinate); }
+    int64_t Left() const { return left; }
+    int64_t Right() const { return right; }
 
     bool operator<(const CalcKey &o) const {
         int comp = read1ReferenceIndex - o.read1ReferenceIndex;
         if (comp == 0)
             comp = read1Coordinate - o.read1Coordinate;
-        // 需要orientation，因为要跟排序的比较方式和顺序一致
-        if (comp == 0)
-            comp = orientation - o.orientation;
         if (comp == 0)
             comp = read2ReferenceIndex - o.read2ReferenceIndex;
         if (comp == 0)
             comp = read2Coordinate - o.read2Coordinate;
+        // 需要orientation，因为要跟排序的比较方式和顺序一致
+        if (comp == 0)
+            comp = orientation - o.orientation;
         return comp < 0;
+    }
+    bool operator <= (const CalcKey &o) const {
+        return *this < o || *this == o;
     }
     bool operator==(const CalcKey &o) const {
         return read1ReferenceIndex == o.read1ReferenceIndex && read1Coordinate == o.read1Coordinate &&
                orientation == o.orientation && read2ReferenceIndex == o.read2ReferenceIndex &&
                read2Coordinate == o.read2Coordinate;
+    }
+    bool operator<(const ReadEnds &o) const {
+        int comp = read1ReferenceIndex - o.read1ReferenceIndex;
+        if (comp == 0)
+            comp = read1Coordinate - o.read1Coordinate;
+        if (comp == 0)
+            comp = read2ReferenceIndex - o.read2ReferenceIndex;
+        if (comp == 0)
+            comp = read2Coordinate - o.read2Coordinate;
+        // 需要orientation，因为要跟排序的比较方式和顺序一致
+        if (comp == 0)
+            comp = orientation - o.orientation;
+        return comp < 0;
     }
     std::size_t operator()() const {
         size_t h1 = read1ReferenceIndex;
@@ -247,8 +279,7 @@ struct DupIdxQueue {
         DupInfo nextDup = dupIdx;
         auto topIdx = minHeap.top();
 
-        ofstream ofs("na12878.txt");
-        ofstream ofs1("na12878-all.txt");
+        // ofstream ofs("n.dup"); ofstream ofs1("n-all.dup");
 
         while (dupIdx != -1) {
             ++len;
@@ -264,12 +295,14 @@ struct DupIdxQueue {
                          << endl;
                 }
             }
-            ofs1 << topIdx.arrId << '\t' << topIdx.arrIdx << '\t' << topIdx.dupIdx << endl;
-            ofs << topIdx.dupIdx << endl;
+            
+            // ofs << topIdx.dupIdx << endl; ofs1 << topIdx.arrId << '\t' << topIdx.arrIdx << '\t' << topIdx.dupIdx << endl;
+            
             dupIdx = nextDup;
             preTop = topIdx;
         }
-        ofs.close();
+        // ofs.close(); ofs1.close();
+        cout << "RealSize: " << len << endl;
         return len;
     }
 };

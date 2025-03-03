@@ -11,8 +11,11 @@ Date : 2023/11/3
 
 #include <stdint.h>
 #include <stdlib.h>
-#include <algorithm>
+#include <util/bam_wrap.h>
 
+#include <algorithm>
+#include <iostream>
+using namespace std;
 /**
  * Small interface that provides access to the physical location information
  * about a cluster. All values should be defaulted to -1 if unavailable.
@@ -123,55 +126,85 @@ struct ReadEnds : PhysicalLocation {
         int comp = a.read1ReferenceIndex - b.read1ReferenceIndex;
         if (comp == 0)
             comp = a.read1Coordinate - b.read1Coordinate;
-        if (comp == 0)
-            comp = a.orientation - b.orientation;
         if (compareRead2) {
             if (comp == 0)
                 comp = a.read2ReferenceIndex - b.read2ReferenceIndex;
             if (comp == 0)
                 comp = a.read2Coordinate - b.read2Coordinate;
         }
+        if (comp == 0)
+            comp = a.orientation - b.orientation;
+
         return comp < 0;
     }
 
-    // 找某一个位置的所有readend时需要, 只对比位点，不对比orientation
-    static bool PairsLittleThan(const ReadEnds &a, const ReadEnds &b) {
+    static bool FragLittleThan(const ReadEnds &a, const ReadEnds &b) {
         int comp = a.read1ReferenceIndex - b.read1ReferenceIndex;
         if (comp == 0)
             comp = a.read1Coordinate - b.read1Coordinate;
-        // 需要orientation，因为要跟排序的比较方式和顺序一致
-        if (comp == 0)
+        if (comp == 0)  // 这个放在坐标比较之前，因为在解析bam的时候，可能有的给read2ReferenceIndex赋值了,有的则没赋值
             comp = a.orientation - b.orientation;
         if (comp == 0)
             comp = a.read2ReferenceIndex - b.read2ReferenceIndex;
         if (comp == 0)
             comp = a.read2Coordinate - b.read2Coordinate;
+        // if (comp == 0)
+        //     comp = a.tile - b.tile;
+        // if (comp == 0)
+        //     comp = a.x - b.x; // 由于picard的bug，用short类型来表示x，y，导致其可能为负数
+        // if (comp == 0)
+        //     comp - a.y - b.y;
+        if (comp == 0)
+            comp = (int)(a.read1IndexInFile - b.read1IndexInFile);
+        if (comp == 0)
+            comp = (int)(a.read2IndexInFile - b.read2IndexInFile);
         return comp < 0;
     }
 
-    // 比较函数
-    bool operator<(const ReadEnds &o) const {
-        int comp = read1ReferenceIndex - o.read1ReferenceIndex;
+    void Print() {
+        std::cout << read1ReferenceIndex << '\t' << read1Coordinate << '\t' << read2ReferenceIndex << '\t' << read2Coordinate
+             << '\t' << orientation << '\t' << read1IndexInFile << '\t' << read2IndexInFile << std::endl;
+    }
+
+    static bool PairLittleThan(const ReadEnds &a, const ReadEnds &b) {
+        int comp = a.read1ReferenceIndex - b.read1ReferenceIndex;
         if (comp == 0)
-            comp = read1Coordinate - o.read1Coordinate;
+            comp = a.read1Coordinate - b.read1Coordinate;
         if (comp == 0)
-            comp = orientation - o.orientation;
+            comp = a.read2ReferenceIndex - b.read2ReferenceIndex;
         if (comp == 0)
-            comp = read2ReferenceIndex - o.read2ReferenceIndex;
+            comp = a.read2Coordinate - b.read2Coordinate;
+        if (comp == 0)  // 这个放在坐标比较了之后，把坐标范围的放在之前，这样对分段数据块比较好处理
+            comp = a.orientation - b.orientation;
+        // if (comp == 0)
+        //     comp = a.tile - b.tile;
+        // if (comp == 0)
+        //     comp = a.x - b.x; // 由于picard的bug，用short类型来表示x，y，导致其可能为负数
+        // if (comp == 0)
+        //     comp - a.y - b.y;
         if (comp == 0)
-            comp = read2Coordinate - o.read2Coordinate;
-        //if (comp == 0)
-        //    comp = tile - o.tile;
-        //if (comp == 0)
-        //    comp = x - o.x;
-        //if (comp == 0)
-        //    comp - y - o.y;
+            comp = (int)(a.read1IndexInFile - b.read1IndexInFile);
         if (comp == 0)
-            comp = (int)(read1IndexInFile - o.read1IndexInFile);
-        if (comp == 0)
-            comp = (int)(read2IndexInFile - o.read2IndexInFile);
+            comp = (int)(a.read2IndexInFile - b.read2IndexInFile);
         return comp < 0;
     }
+
+    static bool CorLittleThan(const ReadEnds &a, const ReadEnds &b) {
+        int comp = a.read1ReferenceIndex - b.read1ReferenceIndex;
+        if (comp == 0)
+            comp = a.read1Coordinate - b.read1Coordinate;
+        if (comp == 0)
+            comp = a.read2ReferenceIndex - b.read2ReferenceIndex;
+        if (comp == 0)
+            comp = a.read2Coordinate - b.read2Coordinate;
+        if (comp == 0)  // 这个放在坐标比较了之后，把坐标范围的放在之前，这样对分段数据块比较好处理
+            comp = a.orientation - b.orientation;
+        return comp < 0;
+    }
+
+    // for pairs only
+    int64_t Left() { return BamWrap::bam_global_pos(read1ReferenceIndex, read1Coordinate); }
+    int64_t Right() { return BamWrap::bam_global_pos(read2ReferenceIndex, read2Coordinate); }
 };
 
 struct ReadEndsHash {

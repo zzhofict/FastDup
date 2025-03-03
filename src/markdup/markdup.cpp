@@ -164,6 +164,7 @@ int MarkDuplicates() {
     spdlog::info("{} optical reads found", opticalIdxQue.Size());
     spdlog::info("{} represent reads found", repIdxQue.Size());
     // spdlog::info("real dup size: {}", dupIdxQue.RealSize());
+    // spdlog::info("real optical dup size: {}", opticalIdxQue.RealSize());
 
     return 0;
 

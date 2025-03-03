@@ -113,6 +113,7 @@ struct DupResult {
 struct IntersectData {
     UnpairedNameMap unpairedDic;  // 用来寻找pair end
     CkeyReadEndsMap ckeyReadEndsMap;
+    int64_t rightPos = 0;
 
     // 每个task对应一个vector
     vector<vector<DupInfo>> &dupIdxArr;
@@ -141,7 +142,7 @@ struct IntersectData {
 struct PipelineArg {
     static const int GENBUFNUM = 2;
     static const int SORTBUFNUM = 2;
-    static const int MARKBUFNUM = 4;
+    static const int MARKBUFNUM = 3;
     uint64_t readOrder = 0;
     uint64_t genREOrder = 0;
     uint64_t sortOrder = 0;
@@ -212,14 +213,20 @@ struct REArrIdIdx {
     const ReadEnds *pE = nullptr;
 };
 
-struct REGreaterThan {
-    bool operator()(const REArrIdIdx &a, const REArrIdIdx &b) { return *b.pE < *a.pE; }
+struct REFragGreaterThan {
+    bool operator()(const REArrIdIdx &a, const REArrIdIdx &b) { return ReadEnds::FragLittleThan(*b.pE, *a.pE); }
 };
 
+struct REPairGreaterThan {
+    bool operator()(const REArrIdIdx &a, const REArrIdIdx &b) { return ReadEnds::PairLittleThan(*b.pE, *a.pE);
+    }
+};
+
+template <typename CMP>
 struct ReadEndsHeap {
     // 将冗余索引和他对应的task vector对应起来
     vector<vector<ReadEnds>> *arr2d;
-    priority_queue<REArrIdIdx, vector<REArrIdIdx>, REGreaterThan> minHeap;
+    priority_queue<REArrIdIdx, vector<REArrIdIdx>, CMP> minHeap;
     uint64_t popNum = 0;
 
     int Init(vector<vector<ReadEnds>> *_arr2d) {
