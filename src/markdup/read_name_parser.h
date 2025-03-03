@@ -138,7 +138,6 @@ struct ReadNameParser {
             } else {
                 // Standard version that will use the regex
                 cmatch m;
-                // cout << "here1" << endl;
                 if (std::regex_match(readName.c_str(), m, readNamePattern)) {
                     loc->tile = std::stoi(m[1].str());
                     loc->x = std::stoi(m[2].str());
@@ -202,7 +201,6 @@ struct ReadNameParser {
             if (readName.at(i) == delim || 0 == i) {
                 numFields++;
                 const int startIdx = (0 == i) ? 0 : (i + 1);
-                // cout << readName << endl;
                 tmpLocationFields[tokensIdx] = std::stoi(readName.substr(startIdx, endIdx - startIdx));
                 tokensIdx--;
                 endIdx = i;

@@ -644,7 +644,7 @@ static void *pipeRead(void *data) {
         pipeArg.readOrder += 1;                     // for next
         yarn::TWIST(pipeArg.readSig, yarn::BY, 1);  // 读入了一轮数据
     }
-    spdlog::info("total reads processed {}, last order {}", readNumSum, pipeArg.readOrder);
+    spdlog::info("{} total reads processed", readNumSum);
     return 0;
 }
 static void *pipeGenRE(void *data) {
@@ -683,7 +683,6 @@ static void *pipeGenRE(void *data) {
         yarn::TWIST(pipeArg.genRESig, yarn::BY, 1);
         yarn::TWIST(pipeArg.readSig, yarn::BY, -1);  // 使用了一次读入的数据
     }
-    spdlog::info("genRE last order {}", pipeArg.genREOrder);
     return 0;
 }
 static void *pipeSort(void *data) {
@@ -702,7 +701,6 @@ static void *pipeSort(void *data) {
 
         if (pipeArg.genREFinish) {
             // 处理完剩余数据
-            cout << "zzh pipeSort: " << pipeArg.genREOrder << '\t' << pipeArg.sortOrder << endl;
             while (pipeArg.sortOrder < pipeArg.genREOrder) {
                 yarn::POSSESS(pipeArg.sortSig);
                 yarn::WAIT_FOR(pipeArg.sortSig, yarn::NOT_TO_BE, pipeArg.SORTBUFNUM);  // 有BUFNUM个位置
@@ -733,7 +731,6 @@ static void *pipeSort(void *data) {
         pipeArg.sortOrder += 1;
         yarn::TWIST(pipeArg.sortSig, yarn::BY, 1);
     }
-    spdlog::info("sort last order {}", pipeArg.sortOrder);
     return 0;
 }
 static void *pipeMarkDup(void *data) {
@@ -751,10 +748,8 @@ static void *pipeMarkDup(void *data) {
         yarn::RELEASE(pipeArg.markDupSig);
 
         if (pipeArg.sortFinish) {
-            cout << "zzh pipeMarkDup: " << pipeArg.sortOrder << '\t' << pipeArg.markDupOrder << endl;
             // 应该还得处理剩余的数据
             while (pipeArg.markDupOrder < pipeArg.sortOrder) {
-                cout << "zzh pipeMarkDup: " << pipeArg.sortOrder << '\t' << pipeArg.markDupOrder << endl;
                 yarn::POSSESS(pipeArg.markDupSig);
                 yarn::WAIT_FOR(pipeArg.markDupSig, yarn::NOT_TO_BE, pipeArg.MARKBUFNUM);
                 yarn::RELEASE(pipeArg.markDupSig);
@@ -767,7 +762,6 @@ static void *pipeMarkDup(void *data) {
                 pipeArg.markDupOrder += 1;
                 yarn::TWIST(pipeArg.markDupSig, yarn::BY, 1);
             }
-            cout << "zzh pipeMarkDup: " << pipeArg.sortOrder << '\t' << pipeArg.markDupOrder << endl;
             yarn::POSSESS(pipeArg.markDupSig);
             pipeArg.markDupFinish = 1;
             yarn::TWIST(pipeArg.markDupSig, yarn::TO, 2 + pipeArg.MARKBUFNUM);
@@ -784,7 +778,6 @@ static void *pipeMarkDup(void *data) {
         pipeArg.markDupOrder += 1;
         yarn::TWIST(pipeArg.markDupSig, yarn::BY, 1);
     }
-    spdlog::info("markdup last order {}", pipeArg.markDupOrder);
     return 0;
 }
 static void *pipeIntersect(void *data) {
@@ -799,7 +792,6 @@ static void *pipeIntersect(void *data) {
         PROF_END(gprof[GP_intersect_wait], intersect_wait);
 
         if (pipeArg.markDupFinish) {
-            cout << "zzh pipeIntersect: " << pipeArg.markDupOrder << '\t' << pipeArg.intersectOrder << endl;
             while (pipeArg.intersectOrder < pipeArg.markDupOrder) {
                 PROF_START(intersect);
                 doIntersect(pipeArg);
@@ -819,7 +811,6 @@ static void *pipeIntersect(void *data) {
 
         pipeArg.intersectOrder += 1;
     }
-    spdlog::info("intersect last order {}", pipeArg.intersectOrder);
     return 0;
 }
 
@@ -866,13 +857,13 @@ static void parallelPipeline() {
     processLastData(pipeArg);
     PROF_END(gprof[GP_merge_result], merge_result);
 
-    spdlog::info("pipeArg size : {} GB", pipeArg.byteSize() / 1024.0 / 1024 / 1024);
+    // spdlog::info("pipeArg size : {} GB", pipeArg.byteSize() / 1024.0 / 1024 / 1024);
 
-    size_t repNum = 0;
-    for (auto &v : pipeArg.intersectData.repIdxArr) repNum += v.size();
-    spdlog::info("rep num : {}", repNum);
+    // size_t repNum = 0;
+    // for (auto &v : pipeArg.intersectData.repIdxArr) repNum += v.size();
+    // spdlog::info("rep num : {}", repNum);
 
-    spdlog::info("result size : {} GB", nsgv::gDupRes.byteSize() / 1024.0 / 1024 / 1024);
+    // spdlog::info("result size : {} GB", nsgv::gDupRes.byteSize() / 1024.0 / 1024 / 1024);
 }
 
 /* 并行流水线方式处理数据，标记冗余 */

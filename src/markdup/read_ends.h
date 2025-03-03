@@ -14,8 +14,7 @@ Date : 2023/11/3
 #include <util/bam_wrap.h>
 
 #include <algorithm>
-#include <iostream>
-using namespace std;
+
 /**
  * Small interface that provides access to the physical location information
  * about a cluster. All values should be defaulted to -1 if unavailable.
@@ -148,22 +147,17 @@ struct ReadEnds : PhysicalLocation {
             comp = a.read2ReferenceIndex - b.read2ReferenceIndex;
         if (comp == 0)
             comp = a.read2Coordinate - b.read2Coordinate;
-        // if (comp == 0)
-        //     comp = a.tile - b.tile;
-        // if (comp == 0)
-        //     comp = a.x - b.x; // 由于picard的bug，用short类型来表示x，y，导致其可能为负数
-        // if (comp == 0)
-        //     comp - a.y - b.y;
+        if (comp == 0)
+            comp = a.tile - b.tile;
+        if (comp == 0)
+            comp = a.x - b.x; // 由于picard的bug，用short类型来表示x，y，导致其可能为负数
+        if (comp == 0)
+            comp - a.y - b.y;
         if (comp == 0)
             comp = (int)(a.read1IndexInFile - b.read1IndexInFile);
         if (comp == 0)
             comp = (int)(a.read2IndexInFile - b.read2IndexInFile);
         return comp < 0;
-    }
-
-    void Print() {
-        std::cout << read1ReferenceIndex << '\t' << read1Coordinate << '\t' << read2ReferenceIndex << '\t' << read2Coordinate
-             << '\t' << orientation << '\t' << read1IndexInFile << '\t' << read2IndexInFile << std::endl;
     }
 
     static bool PairLittleThan(const ReadEnds &a, const ReadEnds &b) {
@@ -176,12 +170,12 @@ struct ReadEnds : PhysicalLocation {
             comp = a.read2Coordinate - b.read2Coordinate;
         if (comp == 0)  // 这个放在坐标比较了之后，把坐标范围的放在之前，这样对分段数据块比较好处理
             comp = a.orientation - b.orientation;
-        // if (comp == 0)
-        //     comp = a.tile - b.tile;
-        // if (comp == 0)
-        //     comp = a.x - b.x; // 由于picard的bug，用short类型来表示x，y，导致其可能为负数
-        // if (comp == 0)
-        //     comp - a.y - b.y;
+        if (comp == 0)
+            comp = a.tile - b.tile;
+        if (comp == 0)
+            comp = a.x - b.x; // 由于picard的bug，用short类型来表示x，y，导致其可能为负数
+        if (comp == 0)
+            comp - a.y - b.y;
         if (comp == 0)
             comp = (int)(a.read1IndexInFile - b.read1IndexInFile);
         if (comp == 0)

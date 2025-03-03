@@ -79,22 +79,12 @@ int MarkDuplicates() {
     htsThreadPool htsPoolWrite = {NULL, 0};  // 读写用不同的线程池
     htsPoolRead.pool = hts_tpool_init(nsgv::gMdArg.NUM_THREADS);
     htsPoolWrite.pool = hts_tpool_init(nsgv::gMdArg.NUM_THREADS);
-    // htsPoolRead.pool = hts_tpool_init(8);
-    // htsPoolWrite.pool = hts_tpool_init(32);
     if (!htsPoolRead.pool || !htsPoolWrite.pool) {
         spdlog::error("[{}] failed to set up thread pool", __LINE__);
         sam_close(nsgv::gInBamFp);
         return -1;
     }
     hts_set_opt(nsgv::gInBamFp, HTS_OPT_THREAD_POOL, &htsPoolRead);
-
-    // 测试读写速度
-#if 0
-    bam1_t *bamp = bam_init1();
-    while (sam_read1(nsgv::gInBamFp, nsgv::gInBamHeader, bamp) >= 0);
-    DisplayProfiling(nsgv::gMdArg.NUM_THREADS);
-    exit(0);
-#endif
 
     /* 冗余检查和标记 */
     PROF_START(markdup_all);
@@ -162,11 +152,9 @@ int MarkDuplicates() {
     opticalIdxQue.Init(&nsgv::gDupRes.opticalDupIdxArr);
     spdlog::info("{} duplicate reads found", dupIdxQue.Size());
     spdlog::info("{} optical reads found", opticalIdxQue.Size());
-    spdlog::info("{} represent reads found", repIdxQue.Size());
-    // spdlog::info("real dup size: {}", dupIdxQue.RealSize());
-    // spdlog::info("real optical dup size: {}", opticalIdxQue.RealSize());
+    // spdlog::info("{} represent reads found", repIdxQue.Size());
 
-    return 0;
+    // return 0;
 
     uint64_t bamIdx = 0;
     DupInfo dupIdx = dupIdxQue.Pop();
@@ -183,19 +171,12 @@ int MarkDuplicates() {
 
     int64_t realDupSize = 0;
 
-    ofstream ofs("newdup.txt");
-
-    // return 0;
-    // for debug
-    int64_t maxDiff = 0;
-    int64_t minDiff = 0;
-
     PROF_START(write);
     while (inBuf.ReadStat() >= 0) {
         PROF_START(final_read);
         size_t readNum = inBuf.ReadBam();
         PROF_END(gprof[GP_final_read], final_read);
-        PROF_PRINT_START(read_write);
+        // PROF_PRINT_START(read_write);
         for (size_t i = 0; i < readNum; ++i) {
             BamWrap *bw = inBuf[i];
             if (bam_copy1(bp, bw->b) == nullptr) {
@@ -225,9 +206,7 @@ int MarkDuplicates() {
             }
 
             /* 判断是否冗余 */
-            // cout << dupIdx << endl;
             if (bamIdx == dupIdx) {
-                // ofs << bamIdx << endl;
                 ++realDupSize;  // for test
                 isDup = true;
                 if (nsgv::gMdArg.TAG_DUPLICATE_SET_MEMBERS && dupIdx.dupSet != 0) {
@@ -235,14 +214,6 @@ int MarkDuplicates() {
                     representativeReadIndexInFile = dupIdx.GetRepIdx();
                     duplicateSetSize = dupIdx.dupSet;
                 }
-
-#if 1
-                // spdlog::info("diff: {}", dupIdx.idx - dupIdx.repIdx);
-                //maxDiff = std::max(maxDiff, dupIdx.idx - dupIdx.repIdx);
-                //minDiff = std::min(minDiff, dupIdx.idx - dupIdx.repIdx);
-                //spdlog::info("min: {}, max: {}", minDiff, maxDiff);
-                
-#endif
 
                 // 为了防止小内存运行的时候，有重复的dupidx，这时候dup的repIdx和dupSetSize可能会有不同
                 while ((dupIdx = dupIdxQue.Pop()) == bamIdx);
@@ -297,8 +268,6 @@ int MarkDuplicates() {
 
             if (nsgv::gMdArg.TAG_DUPLICATE_SET_MEMBERS && isInDuplicateSet) {
                 if (!bw->IsSecondaryOrSupplementary() && !bw->GetReadUnmappedFlag()) {
-                    // cerr << bamIdx << " " << representativeReadIndexInFile << " " << duplicateSetSize << endl;
-                    // ofs << bamIdx << " " << representativeReadIndexInFile << " " << duplicateSetSize << endl;
                     uint8_t *oldTagVal = bam_aux_get(bw->b, nsgv::gMdArg.DUPLICATE_SET_INDEX_TAG.c_str());
                     if (oldTagVal != NULL)
                         bam_aux_del(bw->b, oldTagVal);
@@ -326,7 +295,7 @@ int MarkDuplicates() {
                 bam_aux_append(bw->b, "PG", 'Z', nsgv::gMdArg.PROGRAM_RECORD_ID.size() + 1,
                                (const uint8_t *)nsgv::gMdArg.PROGRAM_RECORD_ID.c_str());
             }
-#if 0
+#if 1
             if (sam_write1(nsgv::gOutBamFp, nsgv::gOutBamHeader, bw->b) < 0) {
                 spdlog::error("failed writing sam record to \"{}\"", nsgv::gMdArg.OUTPUT_FILE.c_str());
                 sam_close(nsgv::gOutBamFp);
@@ -336,7 +305,7 @@ int MarkDuplicates() {
 #endif
         }
         inBuf.ClearAll();
-        PROF_PRINT_END(read_write);
+        // PROF_PRINT_END(read_write);
         spdlog::info("write {} reads to output", readNum);
     }
     bam_destroy1(bp);
@@ -396,8 +365,6 @@ int MarkDuplicates() {
     /* 关闭文件，收尾清理 */
     sam_close(nsgv::gOutBamFp);
     sam_close(nsgv::gInBamFp);
-
-    ofs.close();
 
     return 0;
 }

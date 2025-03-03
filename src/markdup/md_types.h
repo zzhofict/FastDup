@@ -302,7 +302,7 @@ struct DupIdxQueue {
             preTop = topIdx;
         }
         // ofs.close(); ofs1.close();
-        cout << "RealSize: " << len << endl;
+        // cout << "RealSize: " << len << endl;
         return len;
     }
 };
