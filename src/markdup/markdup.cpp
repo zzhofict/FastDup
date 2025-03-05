@@ -57,7 +57,7 @@ static string getFileExtension(const string &filename) {
 
 // entrance of mark duplicates
 int MarkDuplicates() {
-
+    PROF_START(whole_process);
     /* 初始化一些参数和变量*/
     nsgv::gNameParsers.resize(nsgv::gMdArg.NUM_THREADS);
     for (auto &parser : nsgv::gNameParsers)
@@ -153,8 +153,6 @@ int MarkDuplicates() {
     spdlog::info("{} duplicate reads found", dupIdxQue.Size());
     spdlog::info("{} optical reads found", opticalIdxQue.Size());
     // spdlog::info("{} represent reads found", repIdxQue.Size());
-
-    // return 0;
 
     uint64_t bamIdx = 0;
     DupInfo dupIdx = dupIdxQue.Pop();
@@ -365,6 +363,8 @@ int MarkDuplicates() {
     /* 关闭文件，收尾清理 */
     sam_close(nsgv::gOutBamFp);
     sam_close(nsgv::gInBamFp);
+
+    PROF_END(gprof[GP_whole_process], whole_process);
 
     return 0;
 }

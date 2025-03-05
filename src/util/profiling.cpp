@@ -49,32 +49,34 @@ int DisplayProfiling(int nthread) {
 
 #ifdef SHOW_PERF
     fprintf(stderr, "\n");
-    PRINT_GP(read_wait);
-    PRINT_GP(gen_wait);
-    PRINT_GP(sort_wait);
-    PRINT_GP(markdup_wait);
-    PRINT_GP(intersect_wait);
+    // PRINT_GP(read_wait);
+    // PRINT_GP(gen_wait);
+    // PRINT_GP(sort_wait);
+    // PRINT_GP(markdup_wait);
+    // PRINT_GP(intersect_wait);
     PRINT_GP(read);
     PRINT_GP(gen);
     PRINT_GP(sort);
     PRINT_GP(markdup);
     PRINT_GP(intersect);
-    PRINT_GP(merge_result);
-    PRINT_GP(sort_pair);
-    PRINT_GP(sort_frag);
-    PRINT_GP(markdup_pair);
-    PRINT_GP(markdup_frag);
-    PRINT_GP(merge_match);
-    PRINT_GP(merge_markdup);
-    PRINT_GP(merge_update);
-    PRINT_GP(merge_add);
+    // PRINT_GP(merge_result);
+    // PRINT_GP(sort_pair);
+    // PRINT_GP(sort_frag);
+    // PRINT_GP(markdup_pair);
+    // PRINT_GP(markdup_frag);
+    // PRINT_GP(merge_match);
+    // PRINT_GP(merge_markdup);
+    // PRINT_GP(merge_update);
+    // PRINT_GP(merge_add);
     PRINT_GP(markdup_all);
-    PRINT_GP(final_read);
+    // PRINT_GP(final_read);
     PRINT_GP(write);
+    PRINT_GP(whole_process);
+    
+    // PRINT_TP(gen, nthread);
+    // PRINT_TP(sort_frag, nthread);
+    // PRINT_TP(sort_pair, nthread);
 
-    PRINT_TP(gen, nthread);
-    PRINT_TP(sort_frag, nthread);
-    PRINT_TP(sort_pair, nthread);
     fprintf(stderr, "\n");
 #endif
 

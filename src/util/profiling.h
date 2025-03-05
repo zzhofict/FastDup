@@ -60,7 +60,8 @@ enum {
     GP_merge_add,
     GP_markdup_all,
     GP_final_read,
-    GP_write
+    GP_write,
+    GP_whole_process
 };
 // THREAD
 enum { TP_0 = 0, TP_1, TP_2, TP_3, TP_4, TP_5, TP_6, TP_7, TP_8, TP_9, TP_10 };
