@@ -153,6 +153,10 @@ int MarkDuplicates() {
     spdlog::info("{} duplicate reads found", dupIdxQue.Size());
     spdlog::info("{} optical reads found", opticalIdxQue.Size());
     // spdlog::info("{} represent reads found", repIdxQue.Size());
+    // dupIdxQue.RealSize("na12878.dup");
+    // opticalIdxQue.RealSize("normal.odup");
+
+    // return 0;
 
     uint64_t bamIdx = 0;
     DupInfo dupIdx = dupIdxQue.Pop();

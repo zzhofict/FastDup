@@ -147,12 +147,12 @@ struct ReadEnds : PhysicalLocation {
             comp = a.read2ReferenceIndex - b.read2ReferenceIndex;
         if (comp == 0)
             comp = a.read2Coordinate - b.read2Coordinate;
-        if (comp == 0)
-            comp = a.tile - b.tile;
-        if (comp == 0)
-            comp = a.x - b.x; // 由于picard的bug，用short类型来表示x，y，导致其可能为负数
-        if (comp == 0)
-            comp - a.y - b.y;
+//        if (comp == 0)
+//            comp = a.tile - b.tile;
+//        if (comp == 0)
+//            comp = a.x - b.x; // 由于picard的bug，用short类型来表示x，y，导致其可能为负数
+//        if (comp == 0)
+//            comp - a.y - b.y;
         if (comp == 0)
             comp = (int)(a.read1IndexInFile - b.read1IndexInFile);
         if (comp == 0)
@@ -170,12 +170,12 @@ struct ReadEnds : PhysicalLocation {
             comp = a.read2Coordinate - b.read2Coordinate;
         if (comp == 0)  // 这个放在坐标比较了之后，把坐标范围的放在之前，这样对分段数据块比较好处理
             comp = a.orientation - b.orientation;
-        if (comp == 0)
-            comp = a.tile - b.tile;
-        if (comp == 0)
-            comp = a.x - b.x; // 由于picard的bug，用short类型来表示x，y，导致其可能为负数
-        if (comp == 0)
-            comp - a.y - b.y;
+//        if (comp == 0)
+//            comp = a.tile - b.tile;
+//        if (comp == 0)
+//            comp = a.x - b.x; // 由于picard的bug，用short类型来表示x，y，导致其可能为负数
+//        if (comp == 0)
+//            comp - a.y - b.y;
         if (comp == 0)
             comp = (int)(a.read1IndexInFile - b.read1IndexInFile);
         if (comp == 0)

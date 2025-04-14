@@ -272,16 +272,22 @@ struct DupIdxQueue {
         return len - popNum;
     }
 
-    uint64_t RealSize() {
+    uint64_t RealSize(const string fileName) {
+        if (this->Size() == 0) {
+            return 0;
+        }
         uint64_t len = 0;
         auto preTop = minHeap.top();
         DupInfo dupIdx = this->Pop();
         DupInfo nextDup = dupIdx;
         auto topIdx = minHeap.top();
 
-        // ofstream ofs("n.dup"); ofstream ofs1("n-all.dup");
+        ofstream ofs(fileName);  // ofstream ofs1(filePrefix + ".odup");
 
         while (dupIdx != -1) {
+            
+            ofs << dupIdx.idx << endl; // ofs1 << topIdx.arrId << '\t' << topIdx.arrIdx << '\t' << topIdx.dupIdx << endl;
+  
             ++len;
             while (true) {
                 topIdx = minHeap.top();
@@ -295,14 +301,12 @@ struct DupIdxQueue {
                          << endl;
                 }
             }
-            
-            // ofs << topIdx.dupIdx << endl; ofs1 << topIdx.arrId << '\t' << topIdx.arrIdx << '\t' << topIdx.dupIdx << endl;
-            
+                      
             dupIdx = nextDup;
             preTop = topIdx;
         }
-        // ofs.close(); ofs1.close();
-        // cout << "RealSize: " << len << endl;
+        ofs.close(); // ofs1.close();
+        cout << "RealSize: " << len << endl;
         return len;
     }
 };
