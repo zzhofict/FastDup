@@ -7,8 +7,8 @@ Use spdlog as log tool and the default level is 'info'.
 
 ### Features
 
-* Fast - with the same number of threads `FastDup` is ~3.5X faster than GATK MarkDuplicatesSpark.
-  And `FastDup` achives ~15X performance improvement than Picard MarkDuplicates.
+* Fast - with the same number of threads `FastDup` is ~8X faster than GATK MarkDuplicatesSpark.
+  And `FastDup` achives ~20X performance improvement than Picard MarkDuplicates.
 * Generate identical outputs compared to Picard MarkDuplicates.
 * The same detailed metrics data witch Picard MarkDuplicates.
 * All data processed in memory and low-memory footprint even for large input files. 
@@ -42,6 +42,7 @@ Use spdlog as log tool and the default level is 'info'.
 * libbz2
 * liblzma
 * libcurl
+* OpenSSL
 * libdeflate (optional)
 
 ## Install
@@ -69,11 +70,11 @@ The generated binary fastdup will be in the build/bin folder.
 1. get help
 
 ```bash
-fastdup --help
+./fastdup --help
 ```
 
 2. mark duplicates on an input BAM file using 8 threads
 
 ```bash
-fastdup --input in.bam --output out.bam --metrics stats.txt --num-threads 8
+./fastdup --input in_test.bam --output out_md.bam --metrics stats.txt --num-threads 8
 ```

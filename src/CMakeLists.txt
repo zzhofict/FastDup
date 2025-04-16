@@ -84,6 +84,14 @@ else()
     message(FATAL_ERROR "lm is not found")
 endif()
 
+# ssl
+find_package(OpenSSL REQUIRED)
+if(OpenSSL_FOUND)
+    target_link_libraries(${PG_NAME} OpenSSL::SSL OpenSSL::Crypto)
+else()
+    message(FATAL_ERROR "OpenSSL is not found")
+endif()
+
 # install path
 install(TARGETS ${PG_NAME}
     RUNTIME DESTINATION bin
