@@ -42,7 +42,6 @@ Use spdlog as log tool and the default level is 'info'.
 * libbz2
 * liblzma
 * libcurl
-* OpenSSL
 * libdeflate (optional)
 
 ## Install
@@ -67,13 +66,13 @@ The generated binary fastdup will be in the build/bin folder.
 
 ## Usage
 
-1. get help
+Get help
 
 ```bash
 ./fastdup --help
 ```
 
-2. mark duplicates on an input BAM file using 8 threads
+Mark duplicates on an input BAM file using 8 threads
 
 ```bash
 ./fastdup --input in_test.bam --output out_md.bam --metrics stats.txt --num-threads 8
