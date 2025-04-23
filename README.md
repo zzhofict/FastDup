@@ -62,11 +62,13 @@ The generated binary fastdup will be in the build/bin folder.
 Get help
 
 ```bash
-./fastdup --help
+cd FastDup
+./build/bin/fastdup --help
 ```
 
 Mark duplicates on an input BAM file using 8 threads
 
 ```bash
-./fastdup --input in_test.bam --output out_md.bam --metrics stats.txt --num-threads 8
+cd FastDup
+./build/bin/fastdup --input ./test/input/in_test.bam --output ./test/output/out_md.bam --metrics stats.txt --num-threads 8
 ```
