@@ -5,6 +5,7 @@
 /build
 build.sh
 run.sh
+test.sh
 
 # Compiled Object files
 *.slo
