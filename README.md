@@ -2,8 +2,7 @@
 
 Identifies duplicate reads. This tool locates and tags duplicate reads in a coordinate ordered SAM or BAM file.
 
-Use the same algorithm as picard MarkDuplicates and output identical results.
-Use spdlog as log tool and the default level is 'info'.
+Use the same algorithm as picard MarkDuplicates and output identical results, and use spdlog as log tool and the default level is 'info'.
 
 ### Features
 
@@ -30,20 +29,13 @@ Use spdlog as log tool and the default level is 'info'.
 
 ## Requirements
 
-### Build tools
+Install following tools and required libraries.
 
-* autoconf (for htslib)
-* cmake
-* c++17 (gcc >= 8.1 or clang >= 7 should work.)
-
-### Libraries needed
-
-* zlib
-* libbz2
-* liblzma
-* libcurl
-* OpenSSL
-* libdeflate (optional)
+```bash
+# install autoconf (for htslib), cmake, c++17 (gcc >= 8.1 or clang >= 7 should work), zlib, libbz2, liblzma, libcurl, libdeflate (optional)
+sudo apt update
+sudo apt install autoconf cmake g++-8 zlib1g-dev libbz2-dev liblzma-dev libcurl4-openssl-dev libdeflate-dev gcc-8 g++-8 
+```
 
 ## Install
 
@@ -67,13 +59,13 @@ The generated binary fastdup will be in the build/bin folder.
 
 ## Usage
 
-1. get help
+Get help
 
 ```bash
 ./fastdup --help
 ```
 
-2. mark duplicates on an input BAM file using 8 threads
+Mark duplicates on an input BAM file using 8 threads
 
 ```bash
 ./fastdup --input in_test.bam --output out_md.bam --metrics stats.txt --num-threads 8
