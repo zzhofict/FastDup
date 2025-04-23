@@ -8,22 +8,22 @@
 
 struct ReadData {
     vector<BamWrap *> bams;   // read step output
-    int64_t bamStartIdx = 0;  // 每轮读入的bam数组，起始位置在全局bam中的索引
-    int64_t taskSeq = 0;      // 任务序号
+    int64_t bamStartIdx = 0;  // bam，bam
+    int64_t taskSeq = 0;      // 
 };
 
 struct GenREData {
-    vector<vector<ReadEnds>> pairsArr;       // 成对的reads
-    vector<vector<ReadEnds>> fragsArr;       // 暂未找到配对的reads
-    vector<UnpairedNameMap> unpairedDicArr;  // 用来寻找pair end
+    vector<vector<ReadEnds>> pairsArr;       // reads
+    vector<vector<ReadEnds>> fragsArr;       // reads
+    vector<UnpairedNameMap> unpairedDicArr;  // pair end
     void Init(int nThread) {
-        for (int i = 0; i <= nThread; ++i) {  // 比线程多一个，主要是pairs多一个，其他没用
+        for (int i = 0; i <= nThread; ++i) {  // ，pairs，
             pairsArr.push_back(vector<ReadEnds>());
             fragsArr.push_back(vector<ReadEnds>());
             unpairedDicArr.push_back(UnpairedNameMap());
         }
     }
-    UnpairedNameMap unpairedDic;         // 代替sort step中一部分计算
+    UnpairedNameMap unpairedDic;         // sort step
     size_t byteSize() {
         size_t bytes = 0;
         for (auto &v : pairsArr)
@@ -38,9 +38,9 @@ struct GenREData {
 };
 
 struct SortMarkData {
-    vector<ReadEnds> pairs;              // 成对的reads
-    vector<ReadEnds> frags;              // 暂未找到配对的reads
-    UnpairedNameMap unpairedDic;         // 用来寻找pair end
+    vector<ReadEnds> pairs;              // reads
+    vector<ReadEnds> frags;              // reads
+    UnpairedNameMap unpairedDic;         // pair end
     size_t byteSize() {
         size_t bytes = 0;
         for (auto &r : pairs) bytes += sizeof(r);
@@ -56,11 +56,11 @@ struct SortData {
 };
 
 struct MarkDupData {
-    int64_t taskSeq = 0;               // 任务序号
-    DPSet<DupInfo> pairDupIdx;         // pair的冗余read的索引
-    MDSet<int64_t> pairOpticalDupIdx;  // optical冗余read的索引
-    DPSet<DupInfo> fragDupIdx;         // frag的冗余read的索引
-    DPSet<DupInfo> pairRepIdx;         // pair的dupset代表read的索引
+    int64_t taskSeq = 0;               // 
+    DPSet<DupInfo> pairDupIdx;         // pairread
+    MDSet<int64_t> pairOpticalDupIdx;  // opticalread
+    DPSet<DupInfo> fragDupIdx;         // fragread
+    DPSet<DupInfo> pairRepIdx;         // pairdupsetread
     CkeyReadEndsMap ckeyReadEndsMap;
 
     volatile void *dataPtr;  // SortMarkData pointer
@@ -111,11 +111,11 @@ struct DupResult {
 };
 
 struct IntersectData {
-    UnpairedNameMap unpairedDic;  // 用来寻找pair end
+    UnpairedNameMap unpairedDic;  // pair end
     CkeyReadEndsMap ckeyReadEndsMap;
     int64_t rightPos = 0;
 
-    // 每个task对应一个vector
+    // taskvector
     vector<vector<DupInfo>> &dupIdxArr;
     vector<vector<int64_t>> &opticalDupIdxArr;
     vector<vector<DupInfo>> &repIdxArr;
@@ -138,7 +138,7 @@ struct IntersectData {
     }
 };
 
-// 记录流水线状态，task的序号，以及某阶段是否结束
+// ，task，
 struct PipelineArg {
     static const int GENBUFNUM = 2;
     static const int SORTBUFNUM = 2;
@@ -161,8 +161,8 @@ struct PipelineArg {
     yarn::lock_t *markDupSig;
 
     PipelineArg(DupResult *resPtr) : intersectData(resPtr) {
-        readSig = yarn::NEW_LOCK(0);   // 最大值1, 双buffer在bambuf中实现了，对调用透明
-        genRESig = yarn::NEW_LOCK(0);  // 最大值2, 双buffer
+        readSig = yarn::NEW_LOCK(0);   // 1, bufferbambuf，
+        genRESig = yarn::NEW_LOCK(0);  // 2, buffer
         sortSig = yarn::NEW_LOCK(0);
         markDupSig = yarn::NEW_LOCK(0);
         for (int i = 0; i < SORTBUFNUM; ++i) {
@@ -208,8 +208,8 @@ struct PipelineArg {
 };
 
 struct REArrIdIdx {
-    int arrId = 0;        // 数组索引
-    uint64_t arrIdx = 0;  // 数组内部当前索引
+    int arrId = 0;        // 
+    uint64_t arrIdx = 0;  // 
     const ReadEnds *pE = nullptr;
 };
 
@@ -224,7 +224,7 @@ struct REPairGreaterThan {
 
 template <typename CMP>
 struct ReadEndsHeap {
-    // 将冗余索引和他对应的task vector对应起来
+    // task vector
     vector<vector<ReadEnds>> *arr2d;
     priority_queue<REArrIdIdx, vector<REArrIdIdx>, CMP> minHeap;
     uint64_t popNum = 0;
@@ -269,5 +269,5 @@ struct ReadEndsHeap {
     }
 };
 
-// 并行运行mark duplicate
+// mark duplicate
 void PipelineMarkDups();

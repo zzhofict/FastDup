@@ -1,5 +1,5 @@
 /*
-Description: Markduplicate需要用到的一些参数
+Description: Markduplicate
 
 Copyright : All right reserved by ICT
 
@@ -40,7 +40,7 @@ enum ValidationStringency {
  */
 enum DuplicateTaggingPolicy { DontTag, OpticalOnly, All };
 
-/* 排序的方式 */
+/*  */
 enum SortOrder {
     unsorted,
     queryname,
@@ -49,14 +49,14 @@ enum SortOrder {
     unknown
 };
 
-/* 计算reads分数的方式（比那个read得分更高） */
+/* reads（read） */
 enum ScoringStrategy { SUM_OF_BASE_QUALITIES, TOTAL_MAPPED_REFERENCE_LENGTH, RANDOM };
 
-/* 索引文件的格式 （bai或者csi） */
+/*  （baicsi） */
 enum IndexFormat { BAI, CSI };
 }  // namespace nsmd
 
-/* markduplicate 需要的参数*/
+/* markduplicate */
 struct MarkDupsArg {
     string INPUT_FILE;  // input bam filename
 
@@ -64,9 +64,9 @@ struct MarkDupsArg {
 
     int NUM_THREADS = 1;
 
-    size_t MAX_MEM = ((size_t)1) << 30; //  // 最小1G
+    size_t MAX_MEM = ((size_t)1) << 30; //  // 1G
 
-    bool DUPLEX_IO = true; // 同时读写
+    bool DUPLEX_IO = true; // 
 
     /**
      * The optional attribute in SAM/BAM/CRAM files used to store the duplicate type.
@@ -156,7 +156,7 @@ struct MarkDupsArg {
               optional = true) */
     string MOLECULAR_IDENTIFIER_TAG = "";
 
-    /* 继承自 AbstractMarkDuplicatesCommandLineProgram 的参数*/
+    /*  AbstractMarkDuplicatesCommandLineProgram */
     /* "File to write duplication metrics to" */
     string METRICS_FILE;
 
@@ -196,7 +196,7 @@ struct MarkDupsArg {
               optional = true */
     vector<string> COMMENT;
 
-    /* 继承自 AbstractOpticalDuplicateFinderCommandLineProgram 的参数 */
+    /*  AbstractOpticalDuplicateFinderCommandLineProgram  */
 
     /* "MarkDuplicates can use the tile and cluster positions to estimate the rate of optical duplication " +
             "in addition to the dominant source of duplication, PCR, to provide a more accurate estimation of library
@@ -227,7 +227,7 @@ struct MarkDupsArg {
        completely disable this check, " + "set the value to -1." */
     long MAX_OPTICAL_DUPLICATE_SET_SIZE = DEFAULT_MAX_DUPLICATE_SET_SIZE;
 
-    /* 继承自 CommandLineProgram 的参数*/
+    /*  CommandLineProgram */
 
     /* "Whether to suppress job-summary info on System.err.", common = true */
     bool QUIET = false;
@@ -256,9 +256,9 @@ struct MarkDupsArg {
     /* Add PG tag to each read in a SAM or BAM (PGTagArgumentCollection)*/
     bool ADD_PG_TAG_TO_READS = true;
 
-    // 命令行字符串
+    // 
     string CLI_STR;
 
-    // 开始运行时间
+    // 
     string START_TIME;
 };

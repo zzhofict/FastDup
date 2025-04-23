@@ -19,13 +19,13 @@ using std::string;
 using std::unordered_set;
 using std::vector;
 
-/* 存放未匹配readend相同位点的所有readend */
+/* readendreadend */
 struct UnpairedREInfo {
-    int64_t taskSeq;  // 对应第几轮计算
+    int64_t taskSeq;  // 
     ReadEnds unpairedRE;
 };
 
-/* 对于一个pair数据，一个完整的计算点，包含read1的比对位置和read2的比对位置 */
+/* pair，，read1read2 */
 struct CalcKey {
     int8_t orientation = -1;
     int32_t read1ReferenceIndex = -1;
@@ -70,7 +70,7 @@ struct CalcKey {
             comp = read2ReferenceIndex - o.read2ReferenceIndex;
         if (comp == 0)
             comp = read2Coordinate - o.read2Coordinate;
-        // 需要orientation，因为要跟排序的比较方式和顺序一致
+        // orientation，
         if (comp == 0)
             comp = orientation - o.orientation;
         return comp < 0;
@@ -91,7 +91,7 @@ struct CalcKey {
             comp = read2ReferenceIndex - o.read2ReferenceIndex;
         if (comp == 0)
             comp = read2Coordinate - o.read2Coordinate;
-        // 需要orientation，因为要跟排序的比较方式和顺序一致
+        // orientation，
         if (comp == 0)
             comp = orientation - o.orientation;
         return comp < 0;
@@ -113,10 +113,10 @@ struct CalcKeyEqual {
     bool operator()(const CalcKey &o1, const CalcKey &o2) const { return o1 == o2; }
 };
 
-/* 用来记录冗余索引相关的信息 */
+/*  */
 struct DupInfo {
     int16_t dupSet = 0;  // dup set size
-    uint16_t repIdxHigh = 0;  // 这一批冗余中的非冗余read 代表的索引
+    uint16_t repIdxHigh = 0;  // read 
     uint32_t repIdxLow = 0;
     int64_t idx;
 
@@ -164,7 +164,7 @@ using CalcSet = set<T>;
 
 using ReadEndsSet = tsl::robin_set<ReadEnds, ReadEndsHash, ReadEndsEqual>;
 
-/* 当遗留数据在当前任务找到了pair read后，进行冗余计算时候存放结果的数据结构 */
+/* pair read， */
 struct TaskSeqDupInfo {
     DPSet<DupInfo> dupIdx;
     MDSet<int64_t> opticalDupIdx;
@@ -174,7 +174,7 @@ struct TaskSeqDupInfo {
     MDSet<int64_t> notRepIdx;
 };
 
-/* 保存有未匹配pair位点的信息，包括read end数组和有几个未匹配的read end */
+/* pair，read endread end */
 struct UnpairedPosInfo {
     int unpairedNum = 0;
     int64_t taskSeq;
@@ -184,33 +184,33 @@ struct UnpairedPosInfo {
 // typedef unordered_map<string, UnpairedREInfo> UnpairedNameMap;
 // typedef unordered_map<int64_t, UnpairedPosInfo> UnpairedPositionMap;
 
-typedef tsl::robin_map<string, UnpairedREInfo> UnpairedNameMap;  // 以read name为索引，保存未匹配的pair read
-//typedef map<string, UnpairedREInfo> UnpairedNameMap;  // 以read name为索引，保存未匹配的pair read
-typedef tsl::robin_map<int64_t, UnpairedPosInfo> UnpairedPositionMap;  // 以位点为索引，保存该位点包含的对应的所有read和该位点包含的剩余未匹配的read的数量
-// typedef map<CalcKey, vector<ReadEnds>> CkeyReadEndsMap;  // 以calckey为关键字，保存在相邻数据块之前找到的匹配readEnds
+typedef tsl::robin_map<string, UnpairedREInfo> UnpairedNameMap;  // read name，pair read
+//typedef map<string, UnpairedREInfo> UnpairedNameMap;  // read name，pair read
+typedef tsl::robin_map<int64_t, UnpairedPosInfo> UnpairedPositionMap;  // ，readread
+// typedef map<CalcKey, vector<ReadEnds>> CkeyReadEndsMap;  // calckey，readEnds
 typedef unordered_map<CalcKey, vector<ReadEnds>, CalcKeyHash, CalcKeyEqual>
-    CkeyReadEndsMap;  // 以calckey为关键字，保存在相邻数据块之前找到的匹配readEnds
+    CkeyReadEndsMap;  // calckey，readEnds
 // typedef tsl::robin_map<CalcKey, vector<ReadEnds>, CalcKeyHash, CalcKeyEqual> CkeyReadEndsMap;  //
-// 以calckey为关键字，保存在相邻数据块之前找到的匹配readEnds
+// calckey，readEnds
 
-/* 单线程处理冗余参数结构体 */
+/*  */
 struct MarkDupDataArg {
-    int64_t taskSeq;                     // 任务序号
-    int64_t bamStartIdx;                 // 当前vBam数组中第一个bam记录在整体bam中所处的位置
-    vector<BamWrap *> bams;              // 存放待处理的bam read
-    vector<ReadEnds> pairs;              // 成对的reads
-    vector<ReadEnds> frags;              // 暂未找到配对的reads
-    DPSet<DupInfo> pairDupIdx;           // pair的冗余read的索引
-    MDSet<int64_t> pairOpticalDupIdx;    // optical冗余read的索引
-    DPSet<DupInfo> fragDupIdx;           // frag的冗余read的索引
-    DPSet<DupInfo> pairRepIdx;           // pair的dupset代表read的索引
-    MDSet<int64_t> pairSingletonIdx;     // 某位置只有一对read的所有read pair个数
-    UnpairedNameMap unpairedDic;         // 用来寻找pair end
-    UnpairedPositionMap unpairedPosArr;  // 存放未匹配的ReadEnd对应位点的所有ReadEnd，为了避免重复存储
+    int64_t taskSeq;                     // 
+    int64_t bamStartIdx;                 // vBambambam
+    vector<BamWrap *> bams;              // bam read
+    vector<ReadEnds> pairs;              // reads
+    vector<ReadEnds> frags;              // reads
+    DPSet<DupInfo> pairDupIdx;           // pairread
+    MDSet<int64_t> pairOpticalDupIdx;    // opticalread
+    DPSet<DupInfo> fragDupIdx;           // fragread
+    DPSet<DupInfo> pairRepIdx;           // pairdupsetread
+    MDSet<int64_t> pairSingletonIdx;     // readread pair
+    UnpairedNameMap unpairedDic;         // pair end
+    UnpairedPositionMap unpairedPosArr;  // ReadEndReadEnd，
 };
 
 /*
- * 优先队列，用最小堆来实现对所有冗余索引的排序
+ * ，
  */
 template <typename T>
 struct PairArrIdIdx {
@@ -226,9 +226,9 @@ struct IdxGreaterThan {
 
 template <typename T>
 struct DupIdxQueue {
-    // 将冗余索引和他对应的task vector对应起来
+    // task vector
 
-    // 由于是多个task来查找冗余，所以每次找到的冗余index都放在一个独立的vector中，vector之间可能有重叠，所以需要用一个最小堆来维护
+    // task，indexvector，vector，
     vector<vector<T>> *dupIdx2DArr;
     priority_queue<PairArrIdIdx<T>, vector<PairArrIdIdx<T>>, IdxGreaterThan<T>> minHeap;
     uint64_t popNum = 0;

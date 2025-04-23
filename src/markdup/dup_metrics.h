@@ -11,7 +11,7 @@ using std::string;
 using std::vector;
 
 /*
- * 标记冗余过程中的一些数据统计
+ * 
  */
 struct DuplicationMetrics {
     /**
@@ -57,15 +57,15 @@ struct DuplicationMetrics {
      */
     uint64_t ESTIMATED_LIBRARY_SIZE = 0;
 
-    // 其他的统计数据
+    // 
     vector<double> CoverageMult;
 
-    // 比如在该位置，有4个冗余，那么所有4个冗余的位置数量
+    // ，4，4
     MDMap DuplicateCountHist;
     MDMap NonOpticalDuplicateCountHist;
     MDMap OpticalDuplicatesCountHist;
 
-    // 没有冗余的位置总数量 for test
+    //  for test
     MDSet<int64_t> singletonReads;
     MDSet<int64_t> dupReads;  // for test
     MDSet<int64_t> bestReads;

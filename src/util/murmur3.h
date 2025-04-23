@@ -1,5 +1,5 @@
 /*
-Description: Murmur哈希
+Description: Murmur
 
 Copyright : All right reserved by ICT
 

@@ -30,7 +30,7 @@ extern DuplicationMetrics gMetrics;
 };
 
 /*
- * 计算read的分数
+ * read
  */
 int16_t computeDuplicateScore(BamWrap &bw) {
     int16_t score = 0;
@@ -71,7 +71,7 @@ int16_t computeDuplicateScore(BamWrap &bw) {
 
 /*
  * Builds a read ends object that represents a single read.
- * 用来表示一个read的特征结构
+ * read
  */
 void buildReadEnds(BamWrap &bw, int64_t index, ReadNameParser &rnParser, ReadEnds *pKey) {
     auto &k = *pKey;
@@ -93,11 +93,11 @@ void buildReadEnds(BamWrap &bw, int64_t index, ReadNameParser &rnParser, ReadEnd
     else
         nsgv::gMdArg.CHECK_OPTICAL_DUP = false;
     // cout << k.tile << ' ' << k.x << ' ' << k.y << endl;
-    // 计算位置key
+    // key
     k.posKey = BamWrap::bam_global_pos(k.read1ReferenceIndex, k.read1Coordinate);  // << 1 | k.orientation;
 }
 
-/* 对找到的pairend read end添加一些信息 */
+/* pairend read end */
 void modifyPairedEnds(const ReadEnds &fragEnd, ReadEnds *pPairedEnds) {
     auto &pairedEnds = *pPairedEnds;
 
@@ -202,7 +202,7 @@ static void findOpticalDuplicates(vector<const ReadEnds *> &readEndsArr, const R
             if (currentLoc == pBestRe)
                 keeperIndex = i;
             if (currentLoc->tile != ReadEnds::NO_VALUE) {
-                int key = currentLoc->tile;  // 只处理一个样本，所以只有一个read group
+                int key = currentLoc->tile;  // ，read group
                 tileRGmap[key].push_back(i);
             }
             opticalDistanceRelationGraph.addNode(i);
@@ -323,7 +323,7 @@ static int checkOpticalDuplicates(vector<const ReadEnds *> &readEndsArr, const R
 }
 
 /**
- * 记录光学原因造成的冗余
+ * 
  */
 void trackOpticalDuplicates(vector<const ReadEnds *> &readEndsArr, const ReadEnds *pBestRe) {
     bool hasFR = false, hasRF = false;
@@ -358,7 +358,7 @@ void trackOpticalDuplicates(vector<const ReadEnds *> &readEndsArr, const ReadEnd
         nOpticalDup = checkOpticalDuplicates(readEndsArr, pBestRe);
     }
 
-    // 统计信息，trackDuplicateCounts
+    // ，trackDuplicateCounts
     ++nsgv::gMetrics.DuplicateCountHist[readEndsArr.size()];
     if (readEndsArr.size() > nOpticalDup)
         ++nsgv::gMetrics.NonOpticalDuplicateCountHist[readEndsArr.size() - nOpticalDup];

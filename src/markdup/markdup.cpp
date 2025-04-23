@@ -1,6 +1,6 @@
 /*
 Description:
-标记bam文件中的冗余信息，只处理按照坐标排序后的bam，且bam为单一样本数据
+bam，bam，bam
 
 Copyright : All right reserved by ICT
 
@@ -26,26 +26,26 @@ Date : 2023/10/23
 
 namespace nsgv {
 
-MarkDupsArg gMdArg;                   // 参数
-std::vector<ReadNameParser> gNameParsers;  // 每个线程一个read name parser
-samFile *gInBamFp;                    // 输入的bam文件
-sam_hdr_t *gInBamHeader;              // 输入的bam文件头信息
-samFile *gOutBamFp;                   // 输出文件, sam或者bam格式
-sam_hdr_t *gOutBamHeader;             // 输出文件的header
-DuplicationMetrics gMetrics;          // 统计信息
+MarkDupsArg gMdArg;                   // 
+std::vector<ReadNameParser> gNameParsers;  // read name parser
+samFile *gInBamFp;                    // bam
+sam_hdr_t *gInBamHeader;              // bam
+samFile *gOutBamFp;                   // , sambam
+sam_hdr_t *gOutBamHeader;             // header
+DuplicationMetrics gMetrics;          // 
 DupResult gDupRes;
 PipelineArg gPipe(&gDupRes);
 };  // namespace nsgv
 
-// 字节缓冲区
+// 
 struct ByteBuf {
     uint8_t *buf = nullptr;
-    int size = 0;      // 当前使用量
-    int capacity = 0;  // 最大容量
+    int size = 0;      // 
+    int capacity = 0;  // 
 };
 
 /*
- * 获取文件名后缀
+ * 
  */
 static string getFileExtension(const string &filename) {
     auto last_dot = filename.find_last_of('.');
@@ -58,25 +58,25 @@ static string getFileExtension(const string &filename) {
 // entrance of mark duplicates
 int MarkDuplicates() {
     PROF_START(whole_process);
-    /* 初始化一些参数和变量*/
+    /* */
     nsgv::gNameParsers.resize(nsgv::gMdArg.NUM_THREADS);
     for (auto &parser : nsgv::gNameParsers)
-        parser.SetReadNameRegex(nsgv::gMdArg.READ_NAME_REGEX);  // 用来解析read name中的tile，x，y信息
+        parser.SetReadNameRegex(nsgv::gMdArg.READ_NAME_REGEX);  // read nametile，x，y
 
-    /* 打开输入bam文件 */
+    /* bam */
     nsgv::gInBamFp = sam_open_format(nsgv::gMdArg.INPUT_FILE.c_str(), "r", nullptr);
     if (!nsgv::gInBamFp) {
         spdlog::error("[{}] load sam/bam file failed.\n", __func__);
         return -1;
     }
     hts_set_opt(nsgv::gInBamFp, HTS_OPT_BLOCK_SIZE, BAM_BLOCK_SIZE);
-    nsgv::gInBamHeader = sam_hdr_read(nsgv::gInBamFp);  // 读取header
-    // 获取样本名称(libraryId)
+    nsgv::gInBamHeader = sam_hdr_read(nsgv::gInBamFp);  // header
+    // (libraryId)
     nsgv::gMetrics.LIBRARY = sam_hdr_line_name(nsgv::gInBamHeader, "RG", 0);
 
-    /* 利用线程池对输入输出文件进行读写 */
-    htsThreadPool htsPoolRead = {NULL, 0};   // 多线程读取，创建线程池
-    htsThreadPool htsPoolWrite = {NULL, 0};  // 读写用不同的线程池
+    /*  */
+    htsThreadPool htsPoolRead = {NULL, 0};   // ，
+    htsThreadPool htsPoolWrite = {NULL, 0};  // 
     htsPoolRead.pool = hts_tpool_init(nsgv::gMdArg.NUM_THREADS);
     htsPoolWrite.pool = hts_tpool_init(nsgv::gMdArg.NUM_THREADS);
     if (!htsPoolRead.pool || !htsPoolWrite.pool) {
@@ -86,12 +86,12 @@ int MarkDuplicates() {
     }
     hts_set_opt(nsgv::gInBamFp, HTS_OPT_THREAD_POOL, &htsPoolRead);
 
-    /* 冗余检查和标记 */
+    /*  */
     PROF_START(markdup_all);
     PipelineMarkDups();
     PROF_END(gprof[GP_markdup_all], markdup_all);
 
-    /* 标记冗余, 将处理后的结果写入文件 */
+    /* ,  */
     char modeout[12] = "wb";
     sam_open_mode(modeout + 1, nsgv::gMdArg.OUTPUT_FILE.c_str(), NULL);
     nsgv::gOutBamFp = sam_open(nsgv::gMdArg.OUTPUT_FILE.c_str(), modeout);
@@ -100,14 +100,14 @@ int MarkDuplicates() {
         return -1;
     }
     nsgv::gOutBamHeader = sam_hdr_dup(nsgv::gInBamHeader);
-    // 修改输出文件的header
+    // header
     sam_hdr_add_line(nsgv::gOutBamHeader, "PG", "ID", nsgv::gMdArg.PROGRAM_RECORD_ID.c_str(), "VN", FASTDUP_VERSION,
                      "CL", nsgv::gMdArg.CLI_STR.c_str(), NULL);
 
-    // 用同样的线程数量处理输出文件
+    // 
     hts_set_opt(nsgv::gOutBamFp, HTS_OPT_BLOCK_SIZE, BAM_BLOCK_SIZE);
     hts_set_opt(nsgv::gOutBamFp, HTS_OPT_THREAD_POOL, &htsPoolWrite);
-    sam_close(nsgv::gInBamFp);  // 重新打开bam文件
+    sam_close(nsgv::gInBamFp);  // bam
     nsgv::gInBamFp = sam_open_format(nsgv::gMdArg.INPUT_FILE.c_str(), "r", nullptr);
     if (!nsgv::gInBamFp) {
         spdlog::error("[{}] load sam/bam file failed.\n", __func__);
@@ -122,8 +122,8 @@ int MarkDuplicates() {
         sam_close(nsgv::gInBamFp);
         return -1;
     }
-    // 输出index文件
-    string indexFn = nsgv::gMdArg.OUTPUT_FILE + ".bai";  // min_shift = 0 是bai格式
+    // index
+    string indexFn = nsgv::gMdArg.OUTPUT_FILE + ".bai";  // min_shift = 0 bai
     if ("sam" == getFileExtension(nsgv::gMdArg.OUTPUT_FILE) || !nsgv::gMdArg.CREATE_INDEX) {
         indexFn = "";
     }
@@ -141,7 +141,7 @@ int MarkDuplicates() {
         }
     }
 
-    // 读取输入文件，标记冗余并输出
+    // ，
     BamBufType inBuf(nsgv::gMdArg.DUPLEX_IO);
     inBuf.Init(nsgv::gInBamFp, nsgv::gInBamHeader, nsgv::gMdArg.MAX_MEM);
 
@@ -190,13 +190,13 @@ int MarkDuplicates() {
             isOpticalDup = false;
             isInDuplicateSet = false;
 
-            // 删除原来的duplicate tag
+            // duplicate tag
             if (nsgv::gMdArg.CLEAR_DT) {
                 uint8_t *oldTagVal = bam_aux_get(bw->b, nsgv::gMdArg.DUPLICATE_TYPE_TAG.c_str());
                 if (oldTagVal != NULL) bam_aux_del(bw->b, oldTagVal);
             }
 
-            // 统计信息
+            // 
             if (bw->GetReadUnmappedFlag()) {
                 ++nsgv::gMetrics.UNMAPPED_READS;
             } else if (bw->IsSecondaryOrSupplementary()) {
@@ -207,7 +207,7 @@ int MarkDuplicates() {
                 ++nsgv::gMetrics.READ_PAIRS_EXAMINED;  // will need to be divided by 2 at the end
             }
 
-            /* 判断是否冗余 */
+            /*  */
             if (bamIdx == dupIdx) {
                 ++realDupSize;  // for test
                 isDup = true;
@@ -217,7 +217,7 @@ int MarkDuplicates() {
                     duplicateSetSize = dupIdx.dupSet;
                 }
 
-                // 为了防止小内存运行的时候，有重复的dupidx，这时候dup的repIdx和dupSetSize可能会有不同
+                // ，dupidx，duprepIdxdupSetSize
                 while ((dupIdx = dupIdxQue.Pop()) == bamIdx);
                 if (opticalIdx == bamIdx)
                     isOpticalDup = true;
@@ -227,7 +227,7 @@ int MarkDuplicates() {
                         isOpticalDup = true;
                 }
 
-                // 添加冗余标识
+                // 
                 bw->SetDuplicateReadFlag(true);
 
                 uint8_t *oldTagVal = bam_aux_get(bw->b, nsgv::gMdArg.DUPLICATE_TYPE_TAG.c_str());
@@ -242,7 +242,7 @@ int MarkDuplicates() {
                                    nsgv::gMdArg.DUPLICATE_TYPE_LIBRARY.size() + 1,
                                    (const uint8_t *)nsgv::gMdArg.DUPLICATE_TYPE_LIBRARY.c_str());
 
-                // 计算统计信息
+                // 
                 if (!bw->IsSecondaryOrSupplementary() && !bw->GetReadUnmappedFlag()) {
                     // Update the duplication metrics
                     if (!bw->GetReadPairedFlag() || bw->GetMateUnmappedFlag()) {
@@ -282,7 +282,7 @@ int MarkDuplicates() {
                                    (const uint8_t *)&duplicateSetSize);
                 }
             }
-            // 每个read都要写到output，只是添加标识，或者删掉这些冗余record
+            // readoutput，，record
             ++bamIdx;
             if (isDup && nsgv::gMdArg.REMOVE_DUPLICATES) {
                 continue;
@@ -312,7 +312,7 @@ int MarkDuplicates() {
     }
     bam_destroy1(bp);
 
-    // 计算统计信息
+    // 
     nsgv::gMetrics.READ_PAIRS_EXAMINED /= 2;
     nsgv::gMetrics.READ_PAIR_DUPLICATES /= 2;
     for (auto &arr : nsgv::gDupRes.opticalDupIdxArr) nsgv::gMetrics.READ_PAIR_OPTICAL_DUPLICATES += arr.size();
@@ -329,7 +329,7 @@ int MarkDuplicates() {
     }
     calculateRoiHistogram(nsgv::gMetrics);
 
-    // 将统计信息写到文件里
+    // 
     if (!nsgv::gMdArg.METRICS_FILE.empty()) {
         ofstream ofsM(nsgv::gMdArg.METRICS_FILE);
         ofsM << "## StringHeader" << endl;
@@ -364,7 +364,7 @@ int MarkDuplicates() {
         return -1;
     }
 
-    /* 关闭文件，收尾清理 */
+    /* ， */
     sam_close(nsgv::gOutBamFp);
     sam_close(nsgv::gInBamFp);
 

@@ -1,5 +1,5 @@
 /*
-Description: 解析read的name中的信息，比如tile, x, y等
+Description: readname，tile, x, y
 
 Copyright : All right reserved by ICT
 
@@ -28,7 +28,7 @@ using std::string;
  * Provides access to the physical location information about a cluster.
  * All values should be defaulted to -1 if unavailable.  ReadGroup and Tile
  * should only allow non-zero positive integers, x and y coordinates may be
- * negative. 非线程安全
+ * negative. 
  */
 struct ReadNameParser {
     /**
@@ -72,7 +72,7 @@ struct ReadNameParser {
         warnAboutRegexNotMatching = isWarn;
     }
 
-    /* 重新设置readNameRegex */
+    /* readNameRegex */
     void SetReadNameRegex(const string &strReadNameRegex) {
         readNameRegex = strReadNameRegex;
         if (strReadNameRegex == DEFAULT_READ_NAME_REGEX)
@@ -83,7 +83,7 @@ struct ReadNameParser {
         // readNamePattern = strReadNameRegex;
     }
 
-    /* 添加测序时候的tile x y 信息 */
+    /* tile x y  */
     bool AddLocationInformation(const string &readName, PhysicalLocation *loc) {
         if (!(readName == readNameStored)) {
             if (ReadLocationInformation(readName, loc)) {

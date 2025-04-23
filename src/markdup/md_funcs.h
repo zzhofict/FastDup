@@ -14,19 +14,19 @@ using std::unordered_map;
 using std::unordered_set;
 using std::vector;
 
-/* 前向声明 */
+/*  */
 class BamWrap;
 class ReadEnds;
 class ReadNameParser;
 
 /*
- * 用来检测optical duplication的graph
+ * optical duplicationgraph
  */
 template <class Node>
-struct Graph {           // 用set？
-    vector<Node> nodes;  // 图中的结点
+struct Graph {           // set？
+    vector<Node> nodes;  // 
     unordered_map<Node, int> nodeIdxMap;
-    unordered_map<int, unordered_set<int>> neighbors;  // 邻接列表
+    unordered_map<int, unordered_set<int>> neighbors;  // 
 
     int addNode(const Node &singleton) {
         int idx = -1;
@@ -98,18 +98,18 @@ struct Graph {           // 用set？
 };
 
 /*
- * 计算read的分数
+ * read
  */
 int16_t computeDuplicateScore(BamWrap &bw);
 
 /*
  * Builds a read ends object that represents a single read.
- * 用来表示一个read的特征结构
+ * read
  */
 void buildReadEnds(BamWrap &bw, int64_t index, ReadNameParser &rnParser, ReadEnds *pKey);
 
 /*
- * 对找到的pairend read end添加一些信息
+ * pairend read end
  */
 void modifyPairedEnds(const ReadEnds &fragEnd, ReadEnds *pPairedEnds);
 
@@ -118,7 +118,7 @@ void modifyPairedEnds(const ReadEnds &fragEnd, ReadEnds *pPairedEnds);
  * in fact optical duplicates, and stores the data in the instance level histogram.
  * Additionally sets the transient isOpticalDuplicate flag on each read end that is
  * identified as an optical duplicate.
- * 记录光学原因造成的冗余
+ * 
  */
 void trackOpticalDuplicates(vector<const ReadEnds *> &readEndsArr, const ReadEnds *pBestRe);
 
