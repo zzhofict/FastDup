@@ -100,7 +100,7 @@ struct ReadEnds : PhysicalLocation {
         }
     }
 
-    /* readends（） */
+    /* readends */
     static bool AreComparableForDuplicates(const ReadEnds &lhs, const ReadEnds &rhs, bool compareRead2) {
         bool areComparable = true;
         areComparable = lhs.read1ReferenceIndex == rhs.read1ReferenceIndex &&
@@ -120,7 +120,7 @@ struct ReadEnds : PhysicalLocation {
 
     bool IsNegativeStrand() const { return orientation == R; }
 
-    // ，ab，AreComparableForDuplicates
+    // AreComparableForDuplicates
     static inline bool ReadLittleThan(const ReadEnds &a, const ReadEnds &b, bool compareRead2 = false) {
         int comp = a.read1ReferenceIndex - b.read1ReferenceIndex;
         if (comp == 0)
