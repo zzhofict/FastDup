@@ -60,7 +60,7 @@ struct DuplicationMetrics {
     // 
     vector<double> CoverageMult;
 
-    // ，4，4
+    // ,4, 4
     MDMap DuplicateCountHist;
     MDMap NonOpticalDuplicateCountHist;
     MDMap OpticalDuplicatesCountHist;
