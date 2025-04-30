@@ -141,7 +141,7 @@ int MarkDuplicates() {
         }
     }
 
-    // ，
+    // ,
     BamBufType inBuf(nsgv::gMdArg.DUPLEX_IO);
     inBuf.Init(nsgv::gInBamFp, nsgv::gInBamHeader, nsgv::gMdArg.MAX_MEM);
 
@@ -364,7 +364,7 @@ int MarkDuplicates() {
         return -1;
     }
 
-    /* ， */
+    /* , */
     sam_close(nsgv::gOutBamFp);
     sam_close(nsgv::gInBamFp);
 
