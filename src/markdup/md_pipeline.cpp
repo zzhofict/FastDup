@@ -31,7 +31,7 @@ extern DupResult gDupRes;
 extern PipelineArg gPipe;
 };  // namespace nsgv
 
-/* pairendreadends，, ，*/
+/* pairendreadends */
 static void markDupsForPairs(vector<const ReadEnds *> &vpRe, DPSet<DupInfo> *dupIdx, MDSet<int64_t> *opticalDupIdx,
                              DPSet<DupInfo> *repIdx, MDSet<int64_t> *notDupIdx = nullptr,
                              MDSet<int64_t> *notOpticalDupIdx = nullptr, MDSet<int64_t> *notRepIdx = nullptr) {
@@ -104,7 +104,7 @@ static void markDupsForPairs(vector<const ReadEnds *> &vpRe, DPSet<DupInfo> *dup
     }
 }
 
-/* pairedreadends， */
+/* pairedreadends */
 static void markDupsForFrags(vector<const ReadEnds *> &vpRe, bool containsPairs, DPSet<DupInfo> *dupIdx,
                              MDSet<int64_t> *notDupIdx = nullptr) {
     if (containsPairs) {
@@ -814,7 +814,7 @@ static void *pipeIntersect(void *data) {
     return 0;
 }
 
-/* ，global data */
+/* global data */
 static void processLastData(PipelineArg &pipeArg) {
     IntersectData &g = pipeArg.intersectData;
     MarkDupData &lp = pipeArg.markDupData[(pipeArg.intersectOrder - 1) % pipeArg.MARKBUFNUM];
@@ -866,7 +866,7 @@ static void parallelPipeline() {
     // spdlog::info("result size : {} GB", nsgv::gDupRes.byteSize() / 1024.0 / 1024 / 1024);
 }
 
-/* ， */
+/*  */
 void PipelineMarkDups() {
     if (nsgv::gMdArg.NUM_THREADS > 1)
         return parallelPipeline();

@@ -20,8 +20,7 @@
 using namespace std;
 
 /*
-    ，，，，，
-    bam，，。
+    bam
 */
 /*
  * sam read
@@ -32,7 +31,7 @@ struct BamWrap {
     const static int READ_MAX_LENGTH = 200;
     const static int READ_MAX_DEPTH = 1000;  // ，
 
-    // ，
+    // 
     bam1_t *b;
     int64_t end_pos_;  // bam, 
 
@@ -200,8 +199,8 @@ struct BamWrap {
         return insLen;
     }
 
-    // soft clip(HS，？,
-    // IS？)
+    // soft clip(
+    // IS?)
     inline int64_t GetSoftStart() {
         int64_t softStart = b->core.pos;
         const uint32_t *cigar = bam_get_cigar(b);

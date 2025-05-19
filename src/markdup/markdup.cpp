@@ -1,6 +1,6 @@
 /*
 Description:
-bam，bam，bam
+bam
 
 Copyright : All right reserved by ICT
 
@@ -217,7 +217,7 @@ int MarkDuplicates() {
                     duplicateSetSize = dupIdx.dupSet;
                 }
 
-                // ，dupidx，duprepIdxdupSetSize
+                // dupidx, duprepIdxdupSetSize
                 while ((dupIdx = dupIdxQue.Pop()) == bamIdx);
                 if (opticalIdx == bamIdx)
                     isOpticalDup = true;
@@ -282,7 +282,7 @@ int MarkDuplicates() {
                                    (const uint8_t *)&duplicateSetSize);
                 }
             }
-            // readoutput，，record
+            // readoutput, record
             ++bamIdx;
             if (isDup && nsgv::gMdArg.REMOVE_DUPLICATES) {
                 continue;

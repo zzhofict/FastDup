@@ -12,7 +12,7 @@
 /*
  * BamBuf
  */
-// ，
+// 
 int BamBuf::ReadBam() {
     int read_num = 0;
     if (handle_last) {             // bam
@@ -71,7 +71,7 @@ void BamBuf::ClearAll() {
     prepare_read();
 }
 
-// , 
+// 
 inline void BamBuf::prepare_read() {
     // bam
     if (bv.size() > 0) {
@@ -205,11 +205,11 @@ void *AsyncIoBamBuf::async_read(void *data) {
     pthread_exit(0);
 }
 
-// ,
-// ，，po_buf
+// 
+// po_buf
 void AsyncIoBamBuf::ClearBeforeIdx(size_t idxInBv) { clear_before_idx_ = idxInBv; }
 
-// ，，po_buf
+// po_buf
 void AsyncIoBamBuf::ClearAll() { clear_all_ = true; }
 
 inline void AsyncIoBamBuf::resize_buf() {

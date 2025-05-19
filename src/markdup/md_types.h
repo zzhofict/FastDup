@@ -25,7 +25,7 @@ struct UnpairedREInfo {
     ReadEnds unpairedRE;
 };
 
-/* pair，，read1read2 */
+/* pair, read1read2 */
 struct CalcKey {
     int8_t orientation = -1;
     int32_t read1ReferenceIndex = -1;
@@ -164,7 +164,7 @@ using CalcSet = set<T>;
 
 using ReadEndsSet = tsl::robin_set<ReadEnds, ReadEndsHash, ReadEndsEqual>;
 
-/* pair read， */
+/* pair read */
 struct TaskSeqDupInfo {
     DPSet<DupInfo> dupIdx;
     MDSet<int64_t> opticalDupIdx;
@@ -210,7 +210,7 @@ struct MarkDupDataArg {
 };
 
 /*
- * ，
+ * 
  */
 template <typename T>
 struct PairArrIdIdx {

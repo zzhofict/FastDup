@@ -138,7 +138,7 @@ struct IntersectData {
     }
 };
 
-// ，task，
+// task
 struct PipelineArg {
     static const int GENBUFNUM = 2;
     static const int SORTBUFNUM = 2;
