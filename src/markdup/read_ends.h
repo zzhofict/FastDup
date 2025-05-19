@@ -2,7 +2,7 @@
 Description: read
 ends，
 
-Copyright : All right reserved by ICT
+Copyright: All right reserved by ICT
 
 Author : Zhang Zhonghai
 Date : 2023/11/3

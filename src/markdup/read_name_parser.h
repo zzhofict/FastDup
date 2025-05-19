@@ -1,7 +1,7 @@
 /*
-Description: readname，tile, x, y
+Description: readname, tile, x, y
 
-Copyright : All right reserved by ICT
+Copyright: All right reserved by ICT
 
 Author : Zhang Zhonghai
 Date : 2023/11/6

@@ -1,5 +1,5 @@
 /*
-     Description: sam/bam，buf，
+     Description: sam/bam, buf
 
      Copyright : All right reserved by ICT
 
