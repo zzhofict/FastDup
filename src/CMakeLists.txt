@@ -23,7 +23,7 @@ set(PG_NAME "fastdup")
 add_executable(${PG_NAME} ${MAIN_SRC} ${UTIL_SRC} ${MARKDUP_SRC} ${KTHREAD_FILE})
 
 # link htslib
-target_link_libraries(${PG_NAME} libhts.a)
+target_link_libraries(${PG_NAME} libhts.a ${CMAKE_DL_LIBS})
 
 # lib pthread
 find_package(Threads REQUIRED)
