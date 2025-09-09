@@ -30,7 +30,7 @@ sudo apt install -y autoconf cmake g++-8 zlib1g-dev libbz2-dev liblzma-dev libcu
 
 ## 🚀 Installation
 
-You can clone the source code directly from GitHub.
+*   You can clone the source code directly from GitHub.
 
 ```bash
 # 1. Clone the repository
@@ -48,6 +48,12 @@ cd ../..
 mkdir -p build && cd build
 cmake .. -DCMAKE_BUILD_TYPE=Release
 make
+```
+
+*   You can also install the FastDup tool via Bioconda.
+
+```bash
+conda install bioconda::fastdup
 ```
 
 ## 💡 Usage
