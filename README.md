@@ -53,7 +53,10 @@ make
 *   You can also install the FastDup tool via Bioconda.
 
 ```bash
-conda install bioconda::fastdup
+conda config --add channels defaults
+conda config --add channels bioconda
+conda config --add channels conda-forge
+conda install fastdup
 ```
 
 ## 💡 Usage
