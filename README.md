@@ -11,15 +11,11 @@ FastDup is a tool designed to locate and tag duplicate reads in a coordinate-sor
 
 ## ⚠️ Limitations
 
-*   **Marking Stability**: Although `FastDup` detects the exact same set of duplicates as Picard MarkDuplicates, it may mark a different read as the "duplicate" within a group. This is because the sorting algorithm in Picard MarkDuplicates is unstable.
-
-    For example, consider a duplicate group with two reads, A and B, having the same score, where A appears before B in the file. Picard might reorder them, placing B before A, and consequently mark A as the duplicate. In contrast, `FastDup` uses a stable sort algorithm, which preserves the original relative order and thus always marks B as the duplicate.
-
-*   **Data Overflow in Optical Duplicate Detection**: Picard MarkDuplicates uses the `short` (int16_t) data type when parsing tile/region and x/y coordinates from a read name. This can lead to a data overflow if these integer values exceed the range of a `short`. `FastDup` identifies this bug but retains this behavior in the source code to maintain consistency with Picard.
-
-    To fix this, you can resolve this issue by changing the relevant data types in the `PhysicalLocation` struct within the `read_ends.h` file.
-
 *   **Input File Requirement**: `FastDup`'s performance improvements rely on the data characteristics of coordinate-sorted files. Therefore, the input SAM/BAM file must be sorted by coordinate beforehand.
+   
+*   **Data Overflow in Optical Duplicate Detection**: To maintain compatibility, FastDup retains Picard's overflow bug when parsing large coordinates. To fix this, you can resolve this issue by changing the relevant data types in the `PhysicalLocation` struct within the `read_ends.h` file.
+  
+*   **Marking Stability**: While the duplicate sets are identical, the specific read marked as a duplicate may differ from Picard due to differences in sorting stability.
 
 ## 🛠️ Requirements
 
