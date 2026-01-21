@@ -83,3 +83,20 @@ cd FastDup
     --metrics stats.txt \
     --num-threads 8
 ```
+
+## 📚 Citation
+If you find FastDup useful for your work, please cite the following paper:
+```bibtex
+@article{10.1093/bioinformatics/btaf633,
+    author = {Zhang, Zhonghai and Li, Yewen and Meng, Ke and Zhang, Chunming and Tan, Guangming},
+    title = {FastDup: a scalable duplicate marking tool using speculation-and-test mechanism},
+    journal = {Bioinformatics},
+    volume = {41},
+    number = {12},
+    pages = {btaf633},
+    year = {2025},
+    month = {12},
+    issn = {1367-4811},
+    doi = {10.1093/bioinformatics/btaf633},
+}
+```
